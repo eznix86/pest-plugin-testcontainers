@@ -14,7 +14,8 @@ use Testcontainers\Container\StartedGenericContainer as UnpatchedGenericContaine
 final class StartedGenericContainer extends UnpatchedGenericContainer
 {
     /**
-     * @param list<string> $command
+     * @param  list<string>  $command
+     *
      * @throws \Throwable
      */
     #[\Override]
@@ -24,7 +25,8 @@ final class StartedGenericContainer extends UnpatchedGenericContainer
     }
 
     /**
-     * @param list<string> $command
+     * @param  list<string>  $command
+     *
      * @throws \Throwable
      */
     public function execRaw(array $command): string
