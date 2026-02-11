@@ -1,0 +1,11 @@
+parameters:
+    level: max
+    paths:
+        - src
+
+    ignoreErrors:
+        -
+            identifier: trait.unused
+            path: src/InteractsWithContainers.php
+
+    reportUnmatchedIgnoredErrors: true

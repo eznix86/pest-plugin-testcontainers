@@ -1,0 +1,61 @@
+{
+    "name": "eznix86/pest-plugin-testcontainers",
+    "description": "Pest plugin for testing containers",
+    "keywords": [
+        "php",
+        "testcontainers",
+        "laravel",
+        "docker",
+        "containers",
+        "plugin"
+    ],
+    "license": "MIT",
+    "require": {
+        "php": "^8.3",
+        "illuminate/testing": "^12.0",
+        "pestphp/pest": "^4.3.1",
+        "pestphp/pest-plugin": "^4.0.0",
+        "testcontainers/testcontainers": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Eznix86\\PestPluginTestContainers\\": "src/"
+        },
+        "files": [
+            "src/Autoload.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Eznix86\\PestPluginTestContainers\\Tests\\": "tests/"
+        }
+    },
+    "require-dev": {
+        "orchestra/testbench": "^10.0",
+        "pestphp/pest-dev-tools": "^4.0.0"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true,
+        "preferred-install": "dist",
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "php-http/discovery": true
+        }
+    },
+    "scripts": {
+        "refacto": "rector",
+        "lint": "pint",
+        "test:refacto": "rector --dry-run",
+        "test:lint": "pint --test",
+        "test:types": "phpstan analyse --ansi",
+        "test:unit": "pest --parallel --compact --colors=always",
+        "test": [
+            "@test:refacto",
+            "@test:lint",
+            "@test:types",
+            "@test:unit"
+        ]
+    }
+}
