@@ -17,6 +17,31 @@ function trimmedOutput($container, array $command): string
     return trim($container->exec($command)->output);
 }
 
+function eventuallyTrimmedOutput($container, array $command, int $attempts = 8, int $sleepMilliseconds = 250): string
+{
+    $lastExitCode = null;
+    $lastOutput = '';
+
+    for ($attempt = 0; $attempt < $attempts; $attempt++) {
+        $result = $container->exec($command);
+        $lastExitCode = $result->exitCode;
+        $lastOutput = trim($result->output);
+
+        if ($result->successful() && $lastOutput !== '') {
+            return $lastOutput;
+        }
+
+        usleep($sleepMilliseconds * 1000);
+    }
+
+    throw new RuntimeException(sprintf(
+        'Command did not return successful non-empty output after %d attempts. Exit code: %s. Output: %s',
+        $attempts,
+        $lastExitCode === null ? 'unknown' : (string) $lastExitCode,
+        $lastOutput,
+    ));
+}
+
 it('injects postgres database configuration', function () {
     $builder = postgres()
         ->credentials('app_user', 'secret-pass')
@@ -48,7 +73,7 @@ it('generates and uses a random postgres database name by default', function () 
 
     $container = $builder->start();
     $connection = $container->connectionName();
-    $activeDatabase = trimmedOutput($container, ['sh', '-lc', sprintf('psql -U postgres -d %s -tAc "SELECT current_database();"', $databaseName)]);
+    $activeDatabase = eventuallyTrimmedOutput($container, ['sh', '-lc', sprintf('psql -U postgres -d %s -tAc "SELECT current_database();"', $databaseName)]);
 
     expect($databaseName)->toStartWith('test_')
         ->and($connection)->toStartWith('testcontainer_')
@@ -66,7 +91,7 @@ it('injects mysql database configuration', function () {
     $container = $builder->start();
     $connection = $container->connectionName();
     $mappedPort = $container->mappedPort(3306);
-    $activeDatabase = trimmedOutput($container, ['sh', '-lc', 'mysql -uapp_user -psecret-pass -D app_test_db -N -e "SELECT DATABASE();" 2>/dev/null']);
+    $activeDatabase = eventuallyTrimmedOutput($container, ['sh', '-lc', 'mysql -uapp_user -psecret-pass -D app_test_db -N -e "SELECT DATABASE();" 2>/dev/null']);
 
     expect(config('database.default'))->toBe($connection)
         ->and(config("database.connections.{$connection}.driver"))->toBe('mysql')
@@ -89,7 +114,7 @@ it('generates and uses a random mysql database name by default', function () {
 
     $container = $builder->start();
     $connection = $container->connectionName();
-    $activeDatabase = trimmedOutput($container, ['sh', '-lc', sprintf('mysql -uroot -p%s -D %s -N -e "SELECT DATABASE();" 2>/dev/null', $password, $databaseName)]);
+    $activeDatabase = eventuallyTrimmedOutput($container, ['sh', '-lc', sprintf('mysql -uroot -p%s -D %s -N -e "SELECT DATABASE();" 2>/dev/null', $password, $databaseName)]);
 
     expect($databaseName)->toStartWith('test_')
         ->and($connection)->toStartWith('testcontainer_')
@@ -107,7 +132,7 @@ it('injects mariadb database configuration', function () {
     $container = $builder->start();
     $connection = $container->connectionName();
     $mappedPort = $container->mappedPort(3306);
-    $activeDatabase = trimmedOutput($container, ['sh', '-lc', 'mariadb -uapp_user -psecret-pass -D app_test_db -N -e "SELECT DATABASE();" 2>/dev/null']);
+    $activeDatabase = eventuallyTrimmedOutput($container, ['sh', '-lc', 'mariadb -uapp_user -psecret-pass -D app_test_db -N -e "SELECT DATABASE();" 2>/dev/null']);
 
     expect(config('database.default'))->toBe($connection)
         ->and(config("database.connections.{$connection}.driver"))->toBe('mysql')

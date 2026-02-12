@@ -7,7 +7,7 @@ namespace Eznix86\PestPluginTestContainers\Container\PortMapping;
 use Random\RandomException;
 use RuntimeException;
 
-final class ProtocolAwareRandomUniquePortAllocator
+final class ProtocolAwareRandomUniquePortAllocator implements PortAllocator
 {
     private const int MIN_PORT = 10000;
 
@@ -17,6 +17,10 @@ final class ProtocolAwareRandomUniquePortAllocator
 
     /** @var array<int, true> */
     private static array $assignedPorts = [];
+
+    public function __construct(
+        private readonly PortAvailabilityChecker $availabilityChecker = new PortAvailabilityChecker,
+    ) {}
 
     public function allocateForContainerPort(int|string $containerPort): int
     {
@@ -33,7 +37,7 @@ final class ProtocolAwareRandomUniquePortAllocator
                 continue;
             }
 
-            if (! $this->isAvailable($port, $protocol)) {
+            if (! $this->availabilityChecker->isAvailable($port, $protocol)) {
                 continue;
             }
 
@@ -52,39 +56,5 @@ final class ProtocolAwareRandomUniquePortAllocator
         }
 
         return str_ends_with(strtolower($containerPort), '/udp') ? 'udp' : 'tcp';
-    }
-
-    private function isAvailable(int $port, string $protocol): bool
-    {
-        $flags = $protocol === 'udp'
-            ? STREAM_SERVER_BIND
-            : STREAM_SERVER_BIND | STREAM_SERVER_LISTEN;
-
-        $server = $this->tryBindSocket(
-            sprintf('%s://127.0.0.1:%d', $protocol, $port),
-            $flags,
-        );
-
-        if ($server === false) {
-            return false;
-        }
-
-        fclose($server);
-
-        return true;
-    }
-
-    /**
-     * @return resource|false
-     */
-    private function tryBindSocket(string $address, int $flags)
-    {
-        set_error_handler(static fn (): bool => true);
-
-        try {
-            return stream_socket_server($address, $errorCode, $errorMessage, $flags);
-        } finally {
-            restore_error_handler();
-        }
     }
 }

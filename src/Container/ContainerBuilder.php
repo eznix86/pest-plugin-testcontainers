@@ -6,12 +6,16 @@ namespace Eznix86\PestPluginTestContainers\Container;
 
 use Closure;
 use Eznix86\PestPluginTestContainers\Container\PortMapping\FixedPortSequenceGenerator;
+use Eznix86\PestPluginTestContainers\Container\PortMapping\PortAllocator;
 use Eznix86\PestPluginTestContainers\Container\PortMapping\ProtocolAwareRandomUniquePortAllocator;
 use Eznix86\PestPluginTestContainers\Container\PortMapping\SaferRandomUniquePortGenerator;
+use Eznix86\PestPluginTestContainers\Container\PortMapping\WorkerPortAllocator;
+use Eznix86\PestPluginTestContainers\Container\PortMapping\WorkerPortGenerator;
 use Eznix86\PestPluginTestContainers\Container\Reuse\ReusableContainerResolver;
 use Eznix86\PestPluginTestContainers\Container\Reuse\ReuseOptions;
 use Eznix86\PestPluginTestContainers\Container\Reuse\WorkerTokenResolver;
 use InvalidArgumentException;
+use RuntimeException;
 use Testcontainers\Container\GenericContainer;
 use Testcontainers\Container\HttpMethod;
 use Testcontainers\Wait\WaitForExec;
@@ -21,9 +25,17 @@ use Throwable;
 
 final readonly class ContainerBuilder
 {
+    private const int START_MAX_ATTEMPTS = 3;
+
+    private const int START_RETRY_BASE_DELAY_MICROSECONDS = 200_000;
+
+    private const int START_RETRY_MAX_DELAY_MICROSECONDS = 1_000_000;
+
+    private const string TRANSIENT_DOCKER_SERVER_ERROR = 'server error';
+
     private GenericContainer $container;
 
-    private ProtocolAwareRandomUniquePortAllocator $portAllocator;
+    private PortAllocator $portAllocator;
 
     private ReuseOptions $reuseOptions;
 
@@ -50,14 +62,27 @@ final readonly class ContainerBuilder
         callable $registerContainer,
         callable $skipTest,
     ) {
+        $isParallel = $this->isRunningInParallel();
+
+        $portGenerator = $isParallel
+            ? new WorkerPortGenerator
+            : new SaferRandomUniquePortGenerator;
+
         $this->container = (new GenericContainer($image))
-            ->withPortGenerator(new SaferRandomUniquePortGenerator);
-        $this->portAllocator = new ProtocolAwareRandomUniquePortAllocator;
+            ->withPortGenerator($portGenerator);
+        $this->portAllocator = $isParallel
+            ? new WorkerPortAllocator
+            : new ProtocolAwareRandomUniquePortAllocator;
         $this->reuseOptions = new ReuseOptions;
         $this->reusableContainerResolver = new ReusableContainerResolver;
         $this->workerTokenResolver = new WorkerTokenResolver;
         $this->registerContainer = Closure::fromCallable($registerContainer);
         $this->skipTest = Closure::fromCallable($skipTest);
+    }
+
+    private function isRunningInParallel(): bool
+    {
+        return ($_SERVER['PEST_PARALLEL'] ?? $_ENV['PEST_PARALLEL'] ?? '0') === '1';
     }
 
     /**
@@ -285,7 +310,7 @@ final readonly class ContainerBuilder
                 }
             }
 
-            $startedContainer = new StartedContainer($this->container->start());
+            $startedContainer = $this->startContainerWithRetry();
 
             if ($this->reuseOptions->name !== null) {
                 $startedContainer->skipAutoCleanup();
@@ -303,6 +328,49 @@ final readonly class ContainerBuilder
 
             ($this->skipTest)('Docker is unavailable for container test: '.$exception->getMessage());
         }
+    }
+
+    private function startContainerWithRetry(): StartedContainer
+    {
+        $attempt = 0;
+        $lastException = null;
+
+        while ($attempt < self::START_MAX_ATTEMPTS) {
+            try {
+                return new StartedContainer($this->container->start());
+            } catch (Throwable $exception) {
+                if (! $this->isTransientDockerStartError($exception)) {
+                    throw $exception;
+                }
+
+                $lastException = $exception;
+                $attempt++;
+
+                if ($attempt >= self::START_MAX_ATTEMPTS) {
+                    break;
+                }
+
+                usleep($this->startRetryDelayForAttempt($attempt - 1));
+            }
+        }
+
+        if ($lastException instanceof Throwable) {
+            throw $lastException;
+        }
+
+        throw new RuntimeException('Failed to start container for an unknown reason.');
+    }
+
+    private function isTransientDockerStartError(Throwable $exception): bool
+    {
+        return str_contains(strtolower($exception->getMessage()), self::TRANSIENT_DOCKER_SERVER_ERROR);
+    }
+
+    private function startRetryDelayForAttempt(int $attempt): int
+    {
+        $delay = self::START_RETRY_BASE_DELAY_MICROSECONDS * (2 ** $attempt);
+
+        return min($delay, self::START_RETRY_MAX_DELAY_MICROSECONDS);
     }
 
     public function configuredReuseName(): ?string

@@ -12,9 +12,11 @@ use Throwable;
 
 final class StartedContainer
 {
-    private const int MAPPED_PORT_MAX_ATTEMPTS = 30;
+    private const int MAPPED_PORT_MAX_ATTEMPTS = 6;
 
-    private const int MAPPED_PORT_RETRY_DELAY_MICROSECONDS = 100_000;
+    private const int MAPPED_PORT_RETRY_BASE_DELAY_MICROSECONDS = 100_000;
+
+    private const int MAPPED_PORT_RETRY_MAX_DELAY_MICROSECONDS = 2_000_000;
 
     private const string DOCKER_INSPECT_RACE_ERROR = 'foreach() argument must be of type array|object, null given';
 
@@ -60,7 +62,7 @@ final class StartedContainer
                 }
 
                 $lastException = $exception;
-                usleep(self::MAPPED_PORT_RETRY_DELAY_MICROSECONDS);
+                usleep($this->mappedPortRetryDelayForAttempt($attempts));
                 $attempts++;
             }
         }
@@ -77,6 +79,13 @@ final class StartedContainer
 
         return str_contains($message, self::DOCKER_INSPECT_RACE_ERROR)
             || str_contains($message, self::PORT_BINDING_RACE_ERROR);
+    }
+
+    private function mappedPortRetryDelayForAttempt(int $attempt): int
+    {
+        $delay = self::MAPPED_PORT_RETRY_BASE_DELAY_MICROSECONDS * (2 ** $attempt);
+
+        return min($delay, self::MAPPED_PORT_RETRY_MAX_DELAY_MICROSECONDS);
     }
 
     public function mappedPort(int $port): int
