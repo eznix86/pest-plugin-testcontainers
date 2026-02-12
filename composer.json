@@ -56,7 +56,7 @@
         "test:refacto:fix": "rector",
         "test:lint:fix": "pint",
         "test:types": "phpstan analyse --ansi  --memory-limit=-1",
-        "test:unit": "pest --parallel --compact --colors=always",
+        "test:unit": "pest --compact --colors=always",
         "test": [
             "@test:refacto",
             "@test:lint",
