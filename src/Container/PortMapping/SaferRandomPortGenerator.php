@@ -8,7 +8,7 @@ use Random\RandomException;
 use RuntimeException;
 use Testcontainers\Utils\PortGenerator\PortGenerator;
 
-final class SaferRandomPortGenerator implements PortGenerator
+final readonly class SaferRandomPortGenerator implements PortGenerator
 {
     private const int MIN_PORT = 10000;
 
@@ -17,7 +17,7 @@ final class SaferRandomPortGenerator implements PortGenerator
     private const int MAX_ATTEMPTS = 200;
 
     public function __construct(
-        private readonly PortAvailabilityChecker $availabilityChecker = new PortAvailabilityChecker,
+        private PortAvailabilityChecker $availabilityChecker = new PortAvailabilityChecker,
     ) {}
 
     public function generatePort(): int

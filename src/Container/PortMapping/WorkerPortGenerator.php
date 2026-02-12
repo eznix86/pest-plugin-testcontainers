@@ -6,7 +6,7 @@ namespace Eznix86\PestPluginTestContainers\Container\PortMapping;
 
 use Testcontainers\Utils\PortGenerator\PortGenerator;
 
-final class WorkerPortGenerator implements PortGenerator
+final readonly class WorkerPortGenerator implements PortGenerator
 {
     private WorkerPortSequence $sequence;
 

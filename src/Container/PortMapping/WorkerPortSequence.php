@@ -12,7 +12,7 @@ final class WorkerPortSequence
 
     private const int PORTS_PER_WORKER = 100;
 
-    private int $basePort;
+    private readonly int $basePort;
 
     private int $counter = 0;
 

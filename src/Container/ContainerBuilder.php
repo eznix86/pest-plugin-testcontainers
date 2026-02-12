@@ -15,7 +15,6 @@ use Eznix86\PestPluginTestContainers\Container\Reuse\ReusableContainerResolver;
 use Eznix86\PestPluginTestContainers\Container\Reuse\ReuseOptions;
 use Eznix86\PestPluginTestContainers\Container\Reuse\WorkerTokenResolver;
 use InvalidArgumentException;
-use RuntimeException;
 use Testcontainers\Container\GenericContainer;
 use Testcontainers\Container\HttpMethod;
 use Testcontainers\Wait\WaitForExec;
@@ -353,12 +352,7 @@ final readonly class ContainerBuilder
                 usleep($this->startRetryDelayForAttempt($attempt - 1));
             }
         }
-
-        if ($lastException instanceof Throwable) {
-            throw $lastException;
-        }
-
-        throw new RuntimeException('Failed to start container for an unknown reason.');
+        throw $lastException;
     }
 
     private function isTransientDockerStartError(Throwable $exception): bool

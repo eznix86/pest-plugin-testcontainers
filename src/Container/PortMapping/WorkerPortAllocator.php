@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Eznix86\PestPluginTestContainers\Container\PortMapping;
 
-final class WorkerPortAllocator implements PortAllocator
+final readonly class WorkerPortAllocator implements PortAllocator
 {
     private WorkerPortSequence $sequence;
 
