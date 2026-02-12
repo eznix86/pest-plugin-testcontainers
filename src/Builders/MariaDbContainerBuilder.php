@@ -25,7 +25,7 @@ final class MariaDbContainerBuilder extends SpecializedContainerBuilder
 
         $this->username = 'root';
         $this->ports([self::DEFAULT_PORT]);
-        $this->waitForPort(self::DEFAULT_PORT);
+        $this->waitForPort(self::DEFAULT_PORT, timeoutSeconds: 60);
     }
 
     protected function prepareContainer(): void

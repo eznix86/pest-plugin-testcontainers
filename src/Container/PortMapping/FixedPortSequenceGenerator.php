@@ -9,6 +9,8 @@ use Testcontainers\Utils\PortGenerator\PortGenerator;
 
 final class FixedPortSequenceGenerator implements PortGenerator
 {
+    private int $cursor = 0;
+
     /**
      * @param  list<int>  $ports
      */
@@ -18,10 +20,16 @@ final class FixedPortSequenceGenerator implements PortGenerator
 
     public function generatePort(): int
     {
-        $port = array_shift($this->ports);
+        if ($this->ports === []) {
+            throw new RuntimeException('Fixed host port mapping requires at least one host port.');
+        }
+
+        $index = $this->cursor % count($this->ports);
+        $port = $this->ports[$index] ?? null;
+        $this->cursor++;
 
         if (! is_int($port)) {
-            throw new RuntimeException('No host port left to assign for mapped container ports.');
+            throw new RuntimeException('Fixed host port mapping contains a non-integer host port.');
         }
 
         return $port;

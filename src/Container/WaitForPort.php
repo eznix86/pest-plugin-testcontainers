@@ -8,9 +8,12 @@ use RuntimeException;
 use Testcontainers\Container\StartedTestContainer;
 use Testcontainers\Exception\ContainerWaitingTimeoutException;
 use Testcontainers\Wait\BaseWaitStrategy;
+use Throwable;
 
 final class WaitForPort extends BaseWaitStrategy
 {
+    private const string DOCKER_INSPECT_RACE_ERROR = 'foreach() argument must be of type array|object, null given';
+
     public function __construct(
         private readonly ?int $port = null,
         int $timeout = 10000,
@@ -40,6 +43,10 @@ final class WaitForPort extends BaseWaitStrategy
                 }
             } catch (RuntimeException) {
                 // Port mapping may not be ready yet.
+            } catch (Throwable $exception) {
+                if (! $this->isTransientDockerInspectRace($exception)) {
+                    throw $exception;
+                }
             }
 
             usleep($this->pollInterval * 1000);
@@ -73,5 +80,10 @@ final class WaitForPort extends BaseWaitStrategy
         fclose($socket);
 
         return true;
+    }
+
+    private function isTransientDockerInspectRace(Throwable $exception): bool
+    {
+        return str_contains(strtolower($exception->getMessage()), strtolower(self::DOCKER_INSPECT_RACE_ERROR));
     }
 }

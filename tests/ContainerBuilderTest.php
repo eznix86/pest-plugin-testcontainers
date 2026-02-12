@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Eznix86\PestPluginTestContainers\Tests\TestCase;
+use Testcontainers\ContainerClient\DockerContainerClient;
 
 it('starts a container and runs expectation helpers', function () {
     /** @var TestCase $testCase */
@@ -48,6 +49,10 @@ it('rejects mapped host ports with protocol suffixes', function () {
 it('mounts a host file as a container volume', function () {
     /** @var TestCase $testCase */
     $testCase = $this;
+
+    if (getenv('ACT') !== false) {
+        $this->markTestSkipped('Host bind mount paths are not portable in act local runner setup.');
+    }
 
     $fixturePath = tempnam(sys_get_temp_dir(), 'testcontainers-volume-');
 
@@ -182,6 +187,36 @@ it('scopes reusable containers per worker token when requested', function () {
             $_ENV['TEST_TOKEN'] = $existingEnvToken;
         } else {
             unset($_ENV['TEST_TOKEN']);
+        }
+    }
+});
+
+it('reuses and restarts named container when it exists but is stopped', function () {
+    /** @var TestCase $testCase */
+    $testCase = $this;
+
+    $reuseName = 'pest-plugin-reuse-stopped-'.str_replace('.', '-', uniqid('', true));
+    $containerId = null;
+
+    try {
+        $firstContainer = $testCase->container('alpine:3.20')
+            ->reuse($reuseName)
+            ->command(['sh', '-lc', 'while true; do sleep 1; done'])
+            ->start();
+
+        $containerId = $firstContainer->raw()->getId();
+        $firstContainer->raw()->getClient()->containerStop($containerId, ['t' => 0]);
+
+        $secondContainer = $testCase->container('alpine:3.20')
+            ->reuse($reuseName)
+            ->command(['sh', '-lc', 'while true; do sleep 1; done'])
+            ->start();
+
+        expect($containerId)->toBeString()
+            ->and($secondContainer->raw()->getId())->toBe($containerId);
+    } finally {
+        if (is_string($containerId) && $containerId !== '') {
+            DockerContainerClient::getDockerClient()->containerDelete($containerId, ['force' => true]);
         }
     }
 });

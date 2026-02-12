@@ -15,6 +15,8 @@ use Eznix86\PestPluginTestContainers\Container\Reuse\ReusableContainerResolver;
 use Eznix86\PestPluginTestContainers\Container\Reuse\ReuseOptions;
 use Eznix86\PestPluginTestContainers\Container\Reuse\WorkerTokenResolver;
 use InvalidArgumentException;
+use RuntimeException;
+use Testcontainers\ContainerClient\DockerContainerClient;
 use Testcontainers\Container\GenericContainer;
 use Testcontainers\Container\HttpMethod;
 use Testcontainers\Wait\WaitForExec;
@@ -24,13 +26,19 @@ use Throwable;
 
 final readonly class ContainerBuilder
 {
-    private const int START_MAX_ATTEMPTS = 3;
+    private const int START_MAX_ATTEMPTS = 6;
 
-    private const int START_RETRY_BASE_DELAY_MICROSECONDS = 200_000;
+    private const int START_RETRY_BASE_DELAY_MICROSECONDS = 500_000;
 
-    private const int START_RETRY_MAX_DELAY_MICROSECONDS = 1_000_000;
+    private const int START_RETRY_MAX_DELAY_MICROSECONDS = 5_000_000;
 
-    private const string TRANSIENT_DOCKER_SERVER_ERROR = 'server error';
+    /**
+     * @var list<string>
+     */
+    private const array TRANSIENT_DOCKER_START_ERROR_MARKERS = [
+        'server error',
+        'timeout reached while waiting for container',
+    ];
 
     private GenericContainer $container;
 
@@ -325,7 +333,11 @@ final readonly class ContainerBuilder
                 }
             }
 
-            ($this->skipTest)('Docker is unavailable for container test: '.$exception->getMessage());
+            if (DockerAvailabilityDetector::isUnavailable($exception)) {
+                ($this->skipTest)('Docker is unavailable for container test: '.$exception->getMessage());
+            }
+
+            throw new RuntimeException('Testcontainers failed: '.$exception->getMessage(), previous: $exception);
         }
     }
 
@@ -342,6 +354,8 @@ final readonly class ContainerBuilder
                     throw $exception;
                 }
 
+                $this->cleanupFailedContainerAfterTransientStartError();
+
                 $lastException = $exception;
                 $attempt++;
 
@@ -357,7 +371,17 @@ final readonly class ContainerBuilder
 
     private function isTransientDockerStartError(Throwable $exception): bool
     {
-        return str_contains(strtolower($exception->getMessage()), self::TRANSIENT_DOCKER_SERVER_ERROR);
+        for ($current = $exception; $current instanceof Throwable; $current = $current->getPrevious()) {
+            $message = strtolower($current->getMessage());
+
+            foreach (self::TRANSIENT_DOCKER_START_ERROR_MARKERS as $marker) {
+                if (str_contains($message, $marker)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private function startRetryDelayForAttempt(int $attempt): int
@@ -365,6 +389,25 @@ final readonly class ContainerBuilder
         $delay = self::START_RETRY_BASE_DELAY_MICROSECONDS * (1 << $attempt);
 
         return min($delay, self::START_RETRY_MAX_DELAY_MICROSECONDS);
+    }
+
+    private function cleanupFailedContainerAfterTransientStartError(): void
+    {
+        try {
+            $containerId = $this->container->getId();
+        } catch (Throwable) {
+            return;
+        }
+
+        if ($containerId === '') {
+            return;
+        }
+
+        try {
+            DockerContainerClient::getDockerClient()->containerDelete($containerId, ['force' => true]);
+        } catch (Throwable) {
+            // Ignore cleanup failures and keep retrying.
+        }
     }
 
     public function configuredReuseName(): ?string

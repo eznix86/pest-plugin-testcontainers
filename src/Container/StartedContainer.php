@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Eznix86\PestPluginTestContainers\Container;
 
 use Closure;
+use Docker\API\Endpoint\ContainerInspect;
 use Docker\API\Model\ExecIdJsonGetResponse200;
 use RuntimeException;
 use Testcontainers\Container\StartedGenericContainer as UnpatchedGenericContainer;
@@ -14,13 +15,22 @@ final class StartedContainer
 {
     private const int MAPPED_PORT_MAX_ATTEMPTS = 6;
 
-    private const int MAPPED_PORT_RETRY_BASE_DELAY_MICROSECONDS = 100_000;
+    private const int MAPPED_PORT_RETRY_BASE_DELAY_MICROSECONDS = 500_000;
 
-    private const int MAPPED_PORT_RETRY_MAX_DELAY_MICROSECONDS = 2_000_000;
+    private const int MAPPED_PORT_RETRY_MAX_DELAY_MICROSECONDS = 5_000_000;
 
     private const string DOCKER_INSPECT_RACE_ERROR = 'foreach() argument must be of type array|object, null given';
 
     private const string PORT_BINDING_RACE_ERROR = 'No host port left to assign for mapped container ports.';
+
+    /**
+     * @var list<string>
+     */
+    private const array TRANSIENT_MAPPED_PORT_ERROR_MARKERS = [
+        self::DOCKER_INSPECT_RACE_ERROR,
+        'foreach() argument must be of type array|object',
+        self::PORT_BINDING_RACE_ERROR,
+    ];
 
     /**
      * @var Closure(self): void|null
@@ -61,6 +71,12 @@ final class StartedContainer
                     throw $exception;
                 }
 
+                $mappedPort = $this->mappedPortFromRawInspect($containerPort);
+
+                if (is_int($mappedPort)) {
+                    return $mappedPort;
+                }
+
                 $lastException = $exception;
                 usleep($this->mappedPortRetryDelayForAttempt($attempts));
                 $attempts++;
@@ -75,10 +91,17 @@ final class StartedContainer
 
     private function isTransientMappedPortRace(Throwable $exception): bool
     {
-        $message = $exception->getMessage();
+        for ($current = $exception; $current instanceof Throwable; $current = $current->getPrevious()) {
+            $message = strtolower($current->getMessage());
 
-        return str_contains($message, self::DOCKER_INSPECT_RACE_ERROR)
-            || str_contains($message, self::PORT_BINDING_RACE_ERROR);
+            foreach (self::TRANSIENT_MAPPED_PORT_ERROR_MARKERS as $marker) {
+                if (str_contains($message, strtolower($marker))) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private function mappedPortRetryDelayForAttempt(int $attempt): int
@@ -86,6 +109,77 @@ final class StartedContainer
         $delay = self::MAPPED_PORT_RETRY_BASE_DELAY_MICROSECONDS * (1 << $attempt);
 
         return min($delay, self::MAPPED_PORT_RETRY_MAX_DELAY_MICROSECONDS);
+    }
+
+    private function mappedPortFromRawInspect(int $containerPort): ?int
+    {
+        try {
+            $response = $this->container->getClient()->executeRawEndpoint(new ContainerInspect($this->container->getId()));
+            $payload = json_decode($response->getBody()->getContents(), true);
+        } catch (Throwable) {
+            return null;
+        }
+
+        if (! is_array($payload)) {
+            return null;
+        }
+
+        $networkSettings = $payload['NetworkSettings'] ?? null;
+
+        if (! is_array($networkSettings)) {
+            return null;
+        }
+
+        $ports = $networkSettings['Ports'] ?? null;
+
+        if (! is_array($ports)) {
+            return null;
+        }
+
+        $keys = [sprintf('%d/tcp', $containerPort), sprintf('%d/udp', $containerPort)];
+
+        foreach ($keys as $key) {
+            $port = $this->extractFirstHostPort($ports[$key] ?? null);
+
+            if (is_int($port)) {
+                return $port;
+            }
+        }
+
+        foreach ($ports as $key => $bindings) {
+            if (! is_string($key) || ! str_starts_with($key, (string) $containerPort.'/')) {
+                continue;
+            }
+
+            $port = $this->extractFirstHostPort($bindings);
+
+            if (is_int($port)) {
+                return $port;
+            }
+        }
+
+        return null;
+    }
+
+    private function extractFirstHostPort(mixed $bindings): ?int
+    {
+        if (! is_array($bindings)) {
+            return null;
+        }
+
+        foreach ($bindings as $binding) {
+            if (! is_array($binding)) {
+                continue;
+            }
+
+            $hostPort = $binding['HostPort'] ?? null;
+
+            if (is_string($hostPort) && ctype_digit($hostPort)) {
+                return (int) $hostPort;
+            }
+        }
+
+        return null;
     }
 
     public function mappedPort(int $port): int
