@@ -362,7 +362,7 @@ final readonly class ContainerBuilder
 
     private function startRetryDelayForAttempt(int $attempt): int
     {
-        $delay = self::START_RETRY_BASE_DELAY_MICROSECONDS * (2 ** $attempt);
+        $delay = self::START_RETRY_BASE_DELAY_MICROSECONDS * (1 << $attempt);
 
         return min($delay, self::START_RETRY_MAX_DELAY_MICROSECONDS);
     }

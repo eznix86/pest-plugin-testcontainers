@@ -83,7 +83,7 @@ final class StartedContainer
 
     private function mappedPortRetryDelayForAttempt(int $attempt): int
     {
-        $delay = self::MAPPED_PORT_RETRY_BASE_DELAY_MICROSECONDS * (2 ** $attempt);
+        $delay = self::MAPPED_PORT_RETRY_BASE_DELAY_MICROSECONDS * (1 << $attempt);
 
         return min($delay, self::MAPPED_PORT_RETRY_MAX_DELAY_MICROSECONDS);
     }
