@@ -47,8 +47,14 @@
     "scripts": {
         "refacto": "rector",
         "lint": "pint",
+        "test:fix": [
+            "@test:refacto:fix",
+            "@test:lint:fix"
+        ],
         "test:refacto": "rector --dry-run",
         "test:lint": "pint --test",
+        "test:refacto:fix": "rector",
+        "test:lint:fix": "pint",
         "test:types": "phpstan analyse --ansi",
         "test:unit": "pest --parallel --compact --colors=always",
         "test": [

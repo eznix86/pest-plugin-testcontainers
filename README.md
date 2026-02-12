@@ -85,6 +85,91 @@ it('starts nginx with the helper function', function () {
 
 Note: the function helper still requires a running Pest test that uses a test case with `InteractsWithContainers`.
 
+## Laravel Helpers
+
+Specialized helpers are available for common Laravel services:
+
+- `postgres(?string $version = null)`
+- `mysql(?string $version = null)`
+- `redis(?string $version = null)`
+- `typesense(?string $version = null)`
+- `meilisearch(?string $version = null)`
+- `minio(?string $version = null)`
+
+All specialized builders also support:
+
+- `->image(string $image)` to override the helper image
+
+### Database (`asDatabase`)
+
+Use `postgres()` or `mysql()` with `asDatabase()` to inject `database.connections.testcontainer` and set it as default.
+
+```php
+use function Eznix86\PestPluginTestContainers\postgres;
+
+it('uses postgres as laravel database', function () {
+    $container = postgres('16')
+        ->credentials('app_user', 'secret-pass')
+        ->asDatabase() // random database name by default
+        ->start();
+
+    expect(config('database.default'))->toBe('testcontainer')
+        ->and(config('database.connections.testcontainer.driver'))->toBe('pgsql')
+        ->and(config('database.connections.testcontainer.port'))->toBe($container->mappedPort(5432));
+});
+```
+
+### Cache (`asCache`)
+
+Use `redis()->asCache()` to configure Laravel cache against Redis in the test container.
+
+```php
+use function Eznix86\PestPluginTestContainers\redis;
+
+it('uses redis as laravel cache', function () {
+    $container = redis()->asCache()->start();
+
+    expect(config('cache.default'))->toBe('redis')
+        ->and(config('database.redis.testcontainer.port'))->toBe($container->mappedPort(6379));
+});
+```
+
+### Search (`asSearch`)
+
+Use `typesense()` or `meilisearch()` with `asSearch()` to inject Scout config and set `scout.driver`.
+
+```php
+use function Eznix86\PestPluginTestContainers\typesense;
+
+it('uses typesense as laravel scout driver', function () {
+    $container = typesense()
+        ->passphrase('typesense-key')
+        ->asSearch()
+        ->start();
+
+    expect(config('scout.driver'))->toBe('typesense')
+        ->and(config('scout.typesense.port'))->toBe($container->mappedPort(8108));
+});
+```
+
+### Storage (`asStorage`)
+
+Use `minio()->asStorage()` to inject an S3 disk (`filesystems.disks.testcontainer`) and set it as default.
+
+```php
+use Illuminate\Support\Facades\Storage;
+use function Eznix86\PestPluginTestContainers\minio;
+
+it('uses minio as laravel storage', function () {
+    minio()->credentials('storage_user', 'storage_pass')->asStorage()->start();
+
+    Storage::disk('testcontainer')->put('hello.txt', 'ok');
+
+    expect('hello.txt')->toBeInStorage();
+    expect('missing.txt')->toNotBeInStorage();
+});
+```
+
 ## Expectations
 
 `$container->expect(...)` supports container-focused assertions:
@@ -92,6 +177,11 @@ Note: the function helper still requires a running Pest test that uses a test ca
 - `$container->expect('echo hello')->toRunSuccessfully()->toContain('hello')`
 - `$container->expect('/tmp/file')->toExist()->toBeReadable()->toNotExist()`
 - `$container->expect('app started')->toBeInLogs()`
+
+Global storage expectations (useful with `minio()->asStorage()`):
+
+- `expect('path/to/file')->toBeInStorage()`
+- `expect('path/to/file')->toNotBeInStorage()`
 
 ## API Reference
 
@@ -121,6 +211,31 @@ Builder methods available before `start()`:
     ->waitForPort(?int $port = null, int $timeoutSeconds = 30, int $pollIntervalMilliseconds = 500)
     ->waitForCommand(array $command, int $timeoutSeconds = 30, int $pollIntervalMilliseconds = 500)
     ->start()
+```
+
+Specialized helper methods:
+
+```php
+// postgres(), mysql()
+    ->credentials(string $username, string $password)
+    ->asDatabase(?string $databaseName = null)
+    ->asQueue(?string $connection = null)
+
+// redis()
+    ->passphrase(string $phrase)
+    ->asCache()
+    ->asQueue(?string $connection = null)
+
+// typesense(), meilisearch()
+    ->passphrase(string $phrase)
+    ->asSearch()
+
+// minio()
+    ->credentials(string $username, string $password)
+    ->asStorage(?string $disk = null)
+
+// all specialized builders
+    ->image(string $image)
 ```
 
 Port mapping notes:
