@@ -12,11 +12,13 @@ trait ConfiguresQueue
     public function asQueue(?string $connection = null): static
     {
         $this->addConfigInjector(function (StartedContainer $container) use ($connection): void {
+            $connectionName = $connection ?? $container->resolvedConnectionName();
+
             QueueConfigInjector::inject(
                 $container,
                 $this->getQueueDriverName(),
                 $this->getDefaultPort(),
-                $connection
+                $connectionName
             );
         });
 

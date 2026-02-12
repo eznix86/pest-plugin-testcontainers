@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Storage;
 
+use function Eznix86\PestPluginTestContainers\mariadb;
 use function Eznix86\PestPluginTestContainers\meilisearch;
 use function Eznix86\PestPluginTestContainers\minio;
 use function Eznix86\PestPluginTestContainers\mysql;
@@ -23,15 +24,17 @@ it('injects postgres database configuration', function () {
         ->waitForCommand(['sh', '-lc', 'psql -U app_user -d app_test_db -tAc "SELECT 1"']);
 
     $container = $builder->start();
+    $connection = $container->connectionName();
     $mappedPort = $container->mappedPort(5432);
     $activeDatabase = trimmedOutput($container, ['sh', '-lc', 'psql -U app_user -d app_test_db -tAc "SELECT current_database();"']);
 
-    expect(config('database.default'))->toBe('testcontainer')
-        ->and(config('database.connections.testcontainer.driver'))->toBe('pgsql')
-        ->and(config('database.connections.testcontainer.database'))->toBe('app_test_db')
-        ->and(config('database.connections.testcontainer.username'))->toBe($builder->username())
-        ->and(config('database.connections.testcontainer.password'))->toBe($builder->password())
-        ->and(config('database.connections.testcontainer.port'))->toBe($mappedPort)
+    expect(config('database.default'))->toBe($connection)
+        ->and($container->connectionName())->toBe($connection)
+        ->and(config("database.connections.{$connection}.driver"))->toBe('pgsql')
+        ->and(config("database.connections.{$connection}.database"))->toBe('app_test_db')
+        ->and(config("database.connections.{$connection}.username"))->toBe($builder->username())
+        ->and(config("database.connections.{$connection}.password"))->toBe($builder->password())
+        ->and(config("database.connections.{$connection}.port"))->toBe($mappedPort)
         ->and($activeDatabase)->toBe('app_test_db')
         ->and(trimmedOutput($container, ['sh', '-lc', 'printenv POSTGRES_USER']))->toBe($builder->username())
         ->and(trimmedOutput($container, ['sh', '-lc', 'printenv POSTGRES_PASSWORD']))->toBe($builder->password())
@@ -41,14 +44,15 @@ it('injects postgres database configuration', function () {
 it('generates and uses a random postgres database name by default', function () {
     $builder = postgres()->asDatabase();
     $databaseName = $builder->databaseName();
-
     $builder->waitForCommand(['sh', '-lc', sprintf('psql -U postgres -d %s -tAc "SELECT 1"', $databaseName)]);
 
     $container = $builder->start();
+    $connection = $container->connectionName();
     $activeDatabase = trimmedOutput($container, ['sh', '-lc', sprintf('psql -U postgres -d %s -tAc "SELECT current_database();"', $databaseName)]);
 
     expect($databaseName)->toStartWith('test_')
-        ->and(config('database.connections.testcontainer.database'))->toBe($databaseName)
+        ->and($connection)->toStartWith('testcontainer_')
+        ->and(config("database.connections.{$connection}.database"))->toBe($databaseName)
         ->and($activeDatabase)->toBe($databaseName)
         ->and(trimmedOutput($container, ['sh', '-lc', 'printenv POSTGRES_DB']))->toBe($databaseName);
 });
@@ -60,15 +64,16 @@ it('injects mysql database configuration', function () {
         ->waitForCommand(['sh', '-lc', 'mysql -uapp_user -psecret-pass -D app_test_db -N -e "SELECT 1" 2>/dev/null']);
 
     $container = $builder->start();
+    $connection = $container->connectionName();
     $mappedPort = $container->mappedPort(3306);
     $activeDatabase = trimmedOutput($container, ['sh', '-lc', 'mysql -uapp_user -psecret-pass -D app_test_db -N -e "SELECT DATABASE();" 2>/dev/null']);
 
-    expect(config('database.default'))->toBe('testcontainer')
-        ->and(config('database.connections.testcontainer.driver'))->toBe('mysql')
-        ->and(config('database.connections.testcontainer.database'))->toBe('app_test_db')
-        ->and(config('database.connections.testcontainer.username'))->toBe($builder->username())
-        ->and(config('database.connections.testcontainer.password'))->toBe($builder->password())
-        ->and(config('database.connections.testcontainer.port'))->toBe($mappedPort)
+    expect(config('database.default'))->toBe($connection)
+        ->and(config("database.connections.{$connection}.driver"))->toBe('mysql')
+        ->and(config("database.connections.{$connection}.database"))->toBe('app_test_db')
+        ->and(config("database.connections.{$connection}.username"))->toBe($builder->username())
+        ->and(config("database.connections.{$connection}.password"))->toBe($builder->password())
+        ->and(config("database.connections.{$connection}.port"))->toBe($mappedPort)
         ->and($activeDatabase)->toBe('app_test_db')
         ->and(trimmedOutput($container, ['sh', '-lc', 'printenv MYSQL_USER']))->toBe($builder->username())
         ->and(trimmedOutput($container, ['sh', '-lc', 'printenv MYSQL_PASSWORD']))->toBe($builder->password())
@@ -83,12 +88,93 @@ it('generates and uses a random mysql database name by default', function () {
     $builder->waitForCommand(['sh', '-lc', sprintf('mysql -uroot -p%s -D %s -N -e "SELECT 1" 2>/dev/null', $password, $databaseName)]);
 
     $container = $builder->start();
+    $connection = $container->connectionName();
     $activeDatabase = trimmedOutput($container, ['sh', '-lc', sprintf('mysql -uroot -p%s -D %s -N -e "SELECT DATABASE();" 2>/dev/null', $password, $databaseName)]);
 
     expect($databaseName)->toStartWith('test_')
-        ->and(config('database.connections.testcontainer.database'))->toBe($databaseName)
+        ->and($connection)->toStartWith('testcontainer_')
+        ->and(config("database.connections.{$connection}.database"))->toBe($databaseName)
         ->and($activeDatabase)->toBe($databaseName)
         ->and(trimmedOutput($container, ['sh', '-lc', 'printenv MYSQL_DATABASE']))->toBe($databaseName);
+});
+
+it('injects mariadb database configuration', function () {
+    $builder = mariadb()
+        ->credentials('app_user', 'secret-pass')
+        ->asDatabase('app_test_db')
+        ->waitForCommand(['sh', '-lc', 'mariadb -uapp_user -psecret-pass -D app_test_db -N -e "SELECT 1" 2>/dev/null']);
+
+    $container = $builder->start();
+    $connection = $container->connectionName();
+    $mappedPort = $container->mappedPort(3306);
+    $activeDatabase = trimmedOutput($container, ['sh', '-lc', 'mariadb -uapp_user -psecret-pass -D app_test_db -N -e "SELECT DATABASE();" 2>/dev/null']);
+
+    expect(config('database.default'))->toBe($connection)
+        ->and(config("database.connections.{$connection}.driver"))->toBe('mysql')
+        ->and(config("database.connections.{$connection}.database"))->toBe('app_test_db')
+        ->and(config("database.connections.{$connection}.username"))->toBe($builder->username())
+        ->and(config("database.connections.{$connection}.password"))->toBe($builder->password())
+        ->and(config("database.connections.{$connection}.port"))->toBe($mappedPort)
+        ->and($activeDatabase)->toBe('app_test_db')
+        ->and(trimmedOutput($container, ['sh', '-lc', 'printenv MARIADB_USER']))->toBe($builder->username())
+        ->and(trimmedOutput($container, ['sh', '-lc', 'printenv MARIADB_PASSWORD']))->toBe($builder->password())
+        ->and(trimmedOutput($container, ['sh', '-lc', 'printenv MARIADB_DATABASE']))->toBe('app_test_db');
+});
+
+it('injects postgres cache configuration through database cache store', function () {
+    $builder = postgres()->asCache();
+    $container = $builder->start();
+    $connection = $container->connectionName();
+
+    expect(config('cache.default'))->toBe($connection)
+        ->and(config("cache.stores.{$connection}.driver"))->toBe('database')
+        ->and(config("cache.stores.{$connection}.connection"))->toBe($connection)
+        ->and(config("database.connections.{$connection}.driver"))->toBe('pgsql');
+});
+
+it('injects mysql cache configuration through database cache store', function () {
+    $builder = mysql()->asCache();
+    $container = $builder->start();
+    $connection = $container->connectionName();
+
+    expect(config('cache.default'))->toBe($connection)
+        ->and(config("cache.stores.{$connection}.driver"))->toBe('database')
+        ->and(config("cache.stores.{$connection}.connection"))->toBe($connection)
+        ->and(config("database.connections.{$connection}.driver"))->toBe('mysql');
+});
+
+it('injects mariadb cache configuration through database cache store', function () {
+    $builder = mariadb()->asCache();
+    $container = $builder->start();
+    $connection = $container->connectionName();
+
+    expect(config('cache.default'))->toBe($connection)
+        ->and(config("cache.stores.{$connection}.driver"))->toBe('database')
+        ->and(config("cache.stores.{$connection}.connection"))->toBe($connection)
+        ->and(config("database.connections.{$connection}.driver"))->toBe('mysql');
+});
+
+it('uses reuse name as connection name, including per worker suffix', function () {
+    $_ENV['PEST_WORKER'] = '3';
+    $_SERVER['PEST_WORKER'] = '3';
+
+    try {
+        $builder = postgres()
+            ->reuse('shared-postgres', perWorker: true)
+            ->asDatabase('shared_db')
+            ->waitForCommand(['sh', '-lc', 'psql -U postgres -d shared_db -tAc "SELECT 1"']);
+
+        $container = $builder->start();
+        $connection = $container->connectionName();
+
+        expect($connection)->toBe('shared-postgres-worker-3')
+            ->and($container->connectionName())->toBe($connection)
+            ->and(config('database.default'))->toBe($connection)
+            ->and(config("database.connections.{$connection}.database"))->toBe('shared_db')
+            ->and($container->mappedPort(5432))->toBeInt();
+    } finally {
+        unset($_ENV['PEST_WORKER'], $_SERVER['PEST_WORKER']);
+    }
 });
 
 it('allows overriding the helper image while preserving builder configuration', function () {
@@ -101,34 +187,37 @@ it('allows overriding the helper image while preserving builder configuration', 
     $versionOutput = trimmedOutput($container, ['sh', '-lc', 'psql --version']);
 
     expect($versionOutput)->toMatch('/\\b16\\./')
-        ->and(config('database.connections.testcontainer.database'))->toBe('image_override_db');
+        ->and(config("database.connections.{$container->connectionName()}.database"))->toBe('image_override_db');
 });
 
 it('injects redis cache configuration', function () {
-    $container = redis()
-        ->asCache()
-        ->start();
+    $builder = redis()->asCache();
+
+    $container = $builder->start();
+    $connection = $container->connectionName();
 
     $mappedPort = $container->mappedPort(6379);
 
-    expect(config('cache.default'))->toBe('redis')
-        ->and(config('cache.stores.redis.connection'))->toBe('testcontainer')
-        ->and(config('database.redis.testcontainer.host'))->toBeString()
-        ->and(config('database.redis.testcontainer.port'))->toBe($mappedPort);
+    expect(config('cache.default'))->toBe($connection)
+        ->and(config("cache.stores.{$connection}.driver"))->toBe('redis')
+        ->and(config("cache.stores.{$connection}.connection"))->toBe($connection)
+        ->and(config("database.redis.{$connection}.host"))->toBeString()
+        ->and(config("database.redis.{$connection}.port"))->toBe($mappedPort);
 });
 
 it('injects redis queue configuration', function () {
-    $container = redis()
-        ->asQueue()
-        ->start();
+    $builder = redis()->asQueue();
+
+    $container = $builder->start();
+    $connection = $container->connectionName();
 
     $mappedPort = $container->mappedPort(6379);
 
-    expect(config('queue.default'))->toBe('testcontainer')
-        ->and(config('queue.connections.testcontainer.driver'))->toBe('redis')
-        ->and(config('queue.connections.testcontainer.connection'))->toBe('testcontainer')
-        ->and(config('database.redis.testcontainer.host'))->toBeString()
-        ->and(config('database.redis.testcontainer.port'))->toBe($mappedPort);
+    expect(config('queue.default'))->toBe($connection)
+        ->and(config("queue.connections.{$connection}.driver"))->toBe('redis')
+        ->and(config("queue.connections.{$connection}.connection"))->toBe($connection)
+        ->and(config("database.redis.{$connection}.host"))->toBeString()
+        ->and(config("database.redis.{$connection}.port"))->toBe($mappedPort);
 });
 
 it('injects typesense search configuration', function () {
@@ -168,14 +257,15 @@ it('injects minio storage configuration', function () {
         ->asStorage();
 
     $container = $builder->start();
+    $disk = $container->connectionName();
     $mappedPort = $container->mappedPort(9000);
 
-    expect(config('filesystems.default'))->toBe('testcontainer')
-        ->and(config('filesystems.disks.testcontainer.driver'))->toBe('s3')
-        ->and(config('filesystems.disks.testcontainer.key'))->toBe($builder->username())
-        ->and(config('filesystems.disks.testcontainer.secret'))->toBe($builder->password())
-        ->and(config('filesystems.disks.testcontainer.endpoint'))->toBe(sprintf('http://%s:%d', $container->host(), $mappedPort))
-        ->and(config('filesystems.disks.testcontainer.use_path_style_endpoint'))->toBeTrue()
+    expect(config('filesystems.default'))->toBe($disk)
+        ->and(config("filesystems.disks.{$disk}.driver"))->toBe('s3')
+        ->and(config("filesystems.disks.{$disk}.key"))->toBe($builder->username())
+        ->and(config("filesystems.disks.{$disk}.secret"))->toBe($builder->password())
+        ->and(config("filesystems.disks.{$disk}.endpoint"))->toBe(sprintf('http://%s:%d', $container->host(), $mappedPort))
+        ->and(config("filesystems.disks.{$disk}.use_path_style_endpoint"))->toBeTrue()
         ->and(trimmedOutput($container, ['sh', '-lc', 'printenv MINIO_ROOT_USER']))->toBe($builder->username())
         ->and(trimmedOutput($container, ['sh', '-lc', 'printenv MINIO_ROOT_PASSWORD']))->toBe($builder->password());
 });

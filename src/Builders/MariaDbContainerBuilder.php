@@ -10,7 +10,7 @@ use Eznix86\PestPluginTestContainers\Concerns\ConfiguresQueue;
 use Eznix86\PestPluginTestContainers\Concerns\HasCredentials;
 use Eznix86\PestPluginTestContainers\Container\ContainerBuilder;
 
-final class MySqlContainerBuilder extends SpecializedContainerBuilder
+final class MariaDbContainerBuilder extends SpecializedContainerBuilder
 {
     use ConfiguresDatabase;
     use ConfiguresDatabaseCache;
@@ -21,7 +21,7 @@ final class MySqlContainerBuilder extends SpecializedContainerBuilder
 
     public function __construct(ContainerBuilder $builder)
     {
-        parent::__construct($builder, 'mysql');
+        parent::__construct($builder, 'mariadb');
 
         $this->username = 'root';
         $this->ports([self::DEFAULT_PORT]);
@@ -31,13 +31,13 @@ final class MySqlContainerBuilder extends SpecializedContainerBuilder
     protected function prepareContainer(): void
     {
         $env = [
-            'MYSQL_ROOT_PASSWORD' => $this->password(),
-            'MYSQL_DATABASE' => $this->databaseName(),
+            'MARIADB_ROOT_PASSWORD' => $this->password(),
+            'MARIADB_DATABASE' => $this->databaseName(),
         ];
 
         if ($this->username() !== 'root') {
-            $env['MYSQL_USER'] = $this->username();
-            $env['MYSQL_PASSWORD'] = $this->password();
+            $env['MARIADB_USER'] = $this->username();
+            $env['MARIADB_PASSWORD'] = $this->password();
         }
 
         $this->builder->env($env);

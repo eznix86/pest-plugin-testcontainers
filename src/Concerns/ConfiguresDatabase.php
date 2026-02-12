@@ -18,13 +18,16 @@ trait ConfiguresDatabase
         }
 
         $this->addConfigInjector(function (StartedContainer $container): void {
+            $connection = $container->resolvedConnectionName();
+
             DatabaseConfigInjector::inject(
                 $container,
                 $this->getDriverName(),
                 $this->getDefaultPort(),
                 $this->databaseName(),
                 $this->username(),
-                $this->password()
+                $this->password(),
+                $connection
             );
         });
 

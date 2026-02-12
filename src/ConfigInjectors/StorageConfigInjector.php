@@ -17,7 +17,7 @@ final class StorageConfigInjector
         string $bucket = 'test',
         string $region = 'us-east-1'
     ): void {
-        $disk ??= 'testcontainer';
+        $disk ??= sprintf('testcontainer_%s', bin2hex(random_bytes(6)));
 
         config([
             "filesystems.disks.{$disk}" => [

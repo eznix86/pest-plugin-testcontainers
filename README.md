@@ -91,6 +91,7 @@ Specialized helpers are available for common Laravel services:
 
 - `postgres(?string $version = null)`
 - `mysql(?string $version = null)`
+- `mariadb(?string $version = null)`
 - `redis(?string $version = null)`
 - `typesense(?string $version = null)`
 - `meilisearch(?string $version = null)`
@@ -102,35 +103,42 @@ All specialized builders also support:
 
 ### Database (`asDatabase`)
 
-Use `postgres()` or `mysql()` with `asDatabase()` to inject `database.connections.testcontainer` and set it as default.
+Use `postgres()`, `mysql()`, or `mariadb()` with `asDatabase()` to inject a dedicated Laravel database connection and set it as default.
+By default the connection name is randomized per builder (`testcontainer_xxx`). If `reuse('name')` is enabled, the connection name matches the reuse name (including `perWorker` suffixes).
+You can read that name from `$container->connectionName()` after `start()`.
 
 ```php
 use function Eznix86\PestPluginTestContainers\postgres;
 
 it('uses postgres as laravel database', function () {
-    $container = postgres('16')
+    $builder = postgres('16')
         ->credentials('app_user', 'secret-pass')
-        ->asDatabase() // random database name by default
-        ->start();
+        ->asDatabase(); // random database name by default
 
-    expect(config('database.default'))->toBe('testcontainer')
-        ->and(config('database.connections.testcontainer.driver'))->toBe('pgsql')
-        ->and(config('database.connections.testcontainer.port'))->toBe($container->mappedPort(5432));
+    $container = $builder->start();
+    $connection = $container->connectionName();
+
+    expect(config('database.default'))->toBe($connection)
+        ->and(config("database.connections.{$connection}.driver"))->toBe('pgsql')
+        ->and(config("database.connections.{$connection}.port"))->toBe($container->mappedPort(5432));
 });
 ```
 
 ### Cache (`asCache`)
 
 Use `redis()->asCache()` to configure Laravel cache against Redis in the test container.
+Use `postgres()->asCache()`, `mysql()->asCache()`, or `mariadb()->asCache()` to configure Laravel cache with the database store over the injected database connection.
 
 ```php
 use function Eznix86\PestPluginTestContainers\redis;
 
 it('uses redis as laravel cache', function () {
-    $container = redis()->asCache()->start();
+    $builder = redis()->asCache();
+    $container = $builder->start();
+    $connection = $container->connectionName();
 
-    expect(config('cache.default'))->toBe('redis')
-        ->and(config('database.redis.testcontainer.port'))->toBe($container->mappedPort(6379));
+    expect(config('cache.default'))->toBe($connection)
+        ->and(config("database.redis.{$connection}.port"))->toBe($container->mappedPort(6379));
 });
 ```
 
@@ -154,16 +162,17 @@ it('uses typesense as laravel scout driver', function () {
 
 ### Storage (`asStorage`)
 
-Use `minio()->asStorage()` to inject an S3 disk (`filesystems.disks.testcontainer`) and set it as default.
+Use `minio()->asStorage()` to inject an S3 disk and set it as default.
 
 ```php
 use Illuminate\Support\Facades\Storage;
 use function Eznix86\PestPluginTestContainers\minio;
 
 it('uses minio as laravel storage', function () {
-    minio()->credentials('storage_user', 'storage_pass')->asStorage()->start();
+    $builder = minio()->credentials('storage_user', 'storage_pass')->asStorage();
+    $container = $builder->start();
 
-    Storage::disk('testcontainer')->put('hello.txt', 'ok');
+    Storage::disk($container->connectionName())->put('hello.txt', 'ok');
 
     expect('hello.txt')->toBeInStorage();
     expect('missing.txt')->toNotBeInStorage();
@@ -217,9 +226,10 @@ Builder methods available before `start()`:
 Specialized helper methods:
 
 ```php
-// postgres(), mysql()
+// postgres(), mysql(), mariadb()
     ->credentials(string $username, string $password)
     ->asDatabase(?string $databaseName = null)
+    ->asCache()
     ->asQueue(?string $connection = null)
 
 // redis()
@@ -263,6 +273,7 @@ Started container helpers:
 
 ```php
 // $container
+    ->connectionName() // nullable string, set when started from specialized builders
     ->host()
     ->mappedPort(int $containerPort)
     ->getGeneratedPortFor(int $containerPort)
@@ -306,6 +317,7 @@ composer test
 - Started containers are tracked per test class and cleaned up during Laravel teardown.
 - `->reuse('name', perWorker: false)` attaches to a running container with that Docker name when available, and keeps it running across test teardown.
 - `->reuse('name', perWorker: true)` appends a worker token suffix in parallel runs so each worker gets its own reusable container name.
+- Connection naming follows the same rule: randomized by default, reuse name when `->reuse(...)` is configured.
 
 ## Credits
 

@@ -12,12 +12,14 @@ trait ConfiguresStorage
     public function asStorage(?string $disk = null): static
     {
         $this->addConfigInjector(function (StartedContainer $container) use ($disk): void {
+            $resolvedDisk = $disk ?? $container->resolvedConnectionName();
+
             StorageConfigInjector::inject(
                 $container,
                 $this->getDefaultPort(),
                 $this->username(),
                 $this->password(),
-                $disk
+                $resolvedDisk
             );
         });
 

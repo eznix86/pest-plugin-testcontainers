@@ -14,10 +14,9 @@ final class DatabaseConfigInjector
         int $port,
         string $databaseName,
         string $username,
-        string $password
+        string $password,
+        string $connection
     ): void {
-        $connection = 'testcontainer';
-
         config([
             "database.connections.{$connection}" => [
                 'driver' => $driver,

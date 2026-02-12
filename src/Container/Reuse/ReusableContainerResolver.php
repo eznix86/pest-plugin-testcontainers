@@ -48,7 +48,7 @@ final class ReusableContainerResolver
         while ($attempts < self::MAX_WAIT_ATTEMPTS) {
             $container = $this->resolveRunning($name);
 
-            if ($container !== null) {
+            if ($container instanceof StartedContainer) {
                 return $container;
             }
 

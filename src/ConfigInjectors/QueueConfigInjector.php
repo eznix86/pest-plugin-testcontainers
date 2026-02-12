@@ -14,20 +14,20 @@ final class QueueConfigInjector
         int $defaultPort,
         ?string $connection = null
     ): void {
-        $connection ??= 'testcontainer';
+        $connection ??= sprintf('testcontainer_%s', bin2hex(random_bytes(6)));
         $host = $container->host();
         $mappedPort = $container->mappedPort($defaultPort);
 
         $config = match ($driver) {
             'redis' => [
                 'driver' => 'redis',
-                'connection' => 'testcontainer',
+                'connection' => $connection,
                 'queue' => 'default',
                 'retry_after' => 90,
             ],
             'database' => [
                 'driver' => 'database',
-                'connection' => 'testcontainer',
+                'connection' => $connection,
                 'table' => 'jobs',
                 'queue' => 'default',
                 'retry_after' => 90,
@@ -45,7 +45,7 @@ final class QueueConfigInjector
         ];
 
         if ($driver === 'redis') {
-            $queueConfig['database.redis.testcontainer'] = [
+            $queueConfig["database.redis.{$connection}"] = [
                 'host' => $host,
                 'port' => $mappedPort,
                 'database' => 0,

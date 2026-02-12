@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Eznix86\PestPluginTestContainers;
 
+use Eznix86\PestPluginTestContainers\Builders\MariaDbContainerBuilder;
 use Eznix86\PestPluginTestContainers\Builders\MeilisearchContainerBuilder;
 use Eznix86\PestPluginTestContainers\Builders\MinioContainerBuilder;
 use Eznix86\PestPluginTestContainers\Builders\MySqlContainerBuilder;
@@ -31,6 +32,13 @@ function mysql(?string $version = null): MySqlContainerBuilder
     $image = resolveImage($version, 'mysql', 'latest');
 
     return new MySqlContainerBuilder(resolveBaseContainerBuilder('mysql', $image));
+}
+
+function mariadb(?string $version = null): MariaDbContainerBuilder
+{
+    $image = resolveImage($version, 'mariadb', 'latest');
+
+    return new MariaDbContainerBuilder(resolveBaseContainerBuilder('mariadb', $image));
 }
 
 function redis(?string $version = null): RedisContainerBuilder

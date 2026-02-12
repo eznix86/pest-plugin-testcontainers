@@ -7,22 +7,20 @@ namespace Eznix86\PestPluginTestContainers\Concerns;
 use Eznix86\PestPluginTestContainers\ConfigInjectors\CacheConfigInjector;
 use Eznix86\PestPluginTestContainers\Container\StartedContainer;
 
-trait ConfiguresCache
+trait ConfiguresDatabaseCache
 {
     public function asCache(): static
     {
-        $this->addConfigInjector(function (StartedContainer $container): void {
+        $this->asDatabase();
+
+        $this->addConfigInjector(static function (StartedContainer $container): void {
             $connection = $container->resolvedConnectionName();
 
-            CacheConfigInjector::inject(
-                $container,
-                $this->getDefaultPort(),
-                $connection
-            );
+            CacheConfigInjector::injectDatabase($connection, $connection);
         });
 
         return $this;
     }
 
-    abstract protected function getDefaultPort(): int;
+    abstract public function asDatabase(?string $databaseName = null): static;
 }

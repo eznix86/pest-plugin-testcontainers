@@ -29,6 +29,8 @@ final class StartedContainer
 
     private bool $skipAutoCleanup = false;
 
+    private ?string $connectionName = null;
+
     public function __construct(
         UnpatchedGenericContainer $container,
     ) {
@@ -123,6 +125,27 @@ final class StartedContainer
     public function shouldSkipAutoCleanup(): bool
     {
         return $this->skipAutoCleanup;
+    }
+
+    public function withConnectionName(string $connectionName): self
+    {
+        $this->connectionName = $connectionName;
+
+        return $this;
+    }
+
+    public function connectionName(): ?string
+    {
+        return $this->connectionName;
+    }
+
+    public function resolvedConnectionName(): string
+    {
+        if (! is_string($this->connectionName) || $this->connectionName === '') {
+            throw new RuntimeException('Connection name was not initialized on the started container.');
+        }
+
+        return $this->connectionName;
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Eznix86\PestPluginTestContainers\Builders;
 
 use Eznix86\PestPluginTestContainers\Concerns\ConfiguresDatabase;
+use Eznix86\PestPluginTestContainers\Concerns\ConfiguresDatabaseCache;
 use Eznix86\PestPluginTestContainers\Concerns\ConfiguresQueue;
 use Eznix86\PestPluginTestContainers\Concerns\HasCredentials;
 use Eznix86\PestPluginTestContainers\Container\ContainerBuilder;
@@ -12,6 +13,7 @@ use Eznix86\PestPluginTestContainers\Container\ContainerBuilder;
 final class PostgresContainerBuilder extends SpecializedContainerBuilder
 {
     use ConfiguresDatabase;
+    use ConfiguresDatabaseCache;
     use ConfiguresQueue;
     use HasCredentials;
 

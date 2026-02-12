@@ -272,7 +272,7 @@ final readonly class ContainerBuilder
                 $reuseName = $this->resolveReuseName();
                 $reusedContainer = $this->reusableContainerResolver->resolveRunning($reuseName);
 
-                if ($reusedContainer !== null) {
+                if ($reusedContainer instanceof StartedContainer) {
                     return ($this->registerContainer)($reusedContainer);
                 }
             }
@@ -288,13 +288,22 @@ final readonly class ContainerBuilder
             if ($this->reuseOptions->name !== null && $this->reusableContainerResolver->isNameConflict($exception)) {
                 $reusedContainer = $this->reusableContainerResolver->waitUntilRunning($this->resolveReuseName());
 
-                if ($reusedContainer !== null) {
+                if ($reusedContainer instanceof StartedContainer) {
                     return ($this->registerContainer)($reusedContainer);
                 }
             }
 
             ($this->skipTest)('Docker is unavailable for container test: '.$exception->getMessage());
         }
+    }
+
+    public function configuredReuseName(): ?string
+    {
+        if ($this->reuseOptions->name === null) {
+            return null;
+        }
+
+        return $this->resolveReuseName();
     }
 
     private function resolveReuseName(): string

@@ -13,6 +13,8 @@ abstract class SpecializedContainerBuilder
 {
     use HasCustomImage;
 
+    private ?string $generatedConnectionName = null;
+
     /**
      * @var list<Closure(ContainerBuilder): mixed>
      */
@@ -178,14 +180,27 @@ abstract class SpecializedContainerBuilder
     public function start(): StartedContainer
     {
         $this->prepareContainer();
+        $connectionName = $this->resolveConnectionName();
 
         $container = $this->builder->start();
+        $container->withConnectionName($connectionName);
 
         foreach ($this->configInjectors as $injector) {
             $injector($container);
         }
 
         return $container;
+    }
+
+    private function resolveConnectionName(): string
+    {
+        $reuseName = $this->builder->configuredReuseName();
+
+        if (is_string($reuseName) && $reuseName !== '') {
+            return $reuseName;
+        }
+
+        return $this->generatedConnectionName ??= sprintf('testcontainer_%s', bin2hex(random_bytes(6)));
     }
 
     /**
