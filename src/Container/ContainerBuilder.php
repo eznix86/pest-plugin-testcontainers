@@ -16,9 +16,9 @@ use Eznix86\PestPluginTestContainers\Container\Reuse\ReuseOptions;
 use Eznix86\PestPluginTestContainers\Container\Reuse\WorkerTokenResolver;
 use InvalidArgumentException;
 use RuntimeException;
-use Testcontainers\ContainerClient\DockerContainerClient;
 use Testcontainers\Container\GenericContainer;
 use Testcontainers\Container\HttpMethod;
+use Testcontainers\ContainerClient\DockerContainerClient;
 use Testcontainers\Wait\WaitForExec;
 use Testcontainers\Wait\WaitForHttp;
 use Testcontainers\Wait\WaitForLog;
@@ -337,7 +337,7 @@ final readonly class ContainerBuilder
                 ($this->skipTest)('Docker is unavailable for container test: '.$exception->getMessage());
             }
 
-            throw new RuntimeException('Testcontainers failed: '.$exception->getMessage(), previous: $exception);
+            throw new RuntimeException('Testcontainers failed: '.$exception->getMessage(), $exception->getCode(), previous: $exception);
         }
     }
 

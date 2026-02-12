@@ -147,10 +147,12 @@ final class StartedContainer
         }
 
         foreach ($ports as $key => $bindings) {
-            if (! is_string($key) || ! str_starts_with($key, (string) $containerPort.'/')) {
+            if (! is_string($key)) {
                 continue;
             }
-
+            if (! str_starts_with((string) $key, $containerPort.'/')) {
+                continue;
+            }
             $port = $this->extractFirstHostPort($bindings);
 
             if (is_int($port)) {

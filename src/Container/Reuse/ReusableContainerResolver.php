@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Eznix86\PestPluginTestContainers\Container\Reuse;
 
-use Docker\API\Exception\ContainerInspectNotFoundException;
 use Docker\API\Exception\ContainerCreateConflictException;
+use Docker\API\Exception\ContainerInspectNotFoundException;
 use Docker\API\Model\ContainersIdJsonGetResponse200;
 use Eznix86\PestPluginTestContainers\Container\StartedContainer;
 use Eznix86\PestPluginTestContainers\Container\StartedGenericContainer;
