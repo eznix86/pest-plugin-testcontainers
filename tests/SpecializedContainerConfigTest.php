@@ -155,8 +155,8 @@ it('injects mariadb cache configuration through database cache store', function 
 });
 
 it('uses reuse name as connection name, including per worker suffix', function () {
-    $_ENV['PEST_WORKER'] = '3';
-    $_SERVER['PEST_WORKER'] = '3';
+    $previousToken = $_SERVER['TEST_TOKEN'] ?? $_ENV['TEST_TOKEN'] ?? null;
+    $_ENV['TEST_TOKEN'] = $_SERVER['TEST_TOKEN'] = '200';
 
     try {
         $builder = postgres()
@@ -167,13 +167,16 @@ it('uses reuse name as connection name, including per worker suffix', function (
         $container = $builder->start();
         $connection = $container->connectionName();
 
-        expect($connection)->toBe('shared-postgres-worker-3')
+        expect($connection)->toBe('shared-postgres-worker-200')
             ->and($container->connectionName())->toBe($connection)
             ->and(config('database.default'))->toBe($connection)
             ->and(config("database.connections.{$connection}.database"))->toBe('shared_db')
             ->and($container->mappedPort(5432))->toBeInt();
     } finally {
-        unset($_ENV['PEST_WORKER'], $_SERVER['PEST_WORKER']);
+        unset($_ENV['TEST_TOKEN'], $_SERVER['TEST_TOKEN']);
+        if ($previousToken !== null) {
+            $_ENV['TEST_TOKEN'] = $_SERVER['TEST_TOKEN'] = $previousToken;
+        }
     }
 });
 
