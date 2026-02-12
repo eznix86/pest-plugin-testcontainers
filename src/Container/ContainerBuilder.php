@@ -66,7 +66,9 @@ final readonly class ContainerBuilder
     public function ports(array $ports): self
     {
         if (array_is_list($ports)) {
+            /** @var list<int|string> $containerPorts */
             $containerPorts = array_map($this->normalizeContainerPort(...), $ports);
+            /** @var list<int> $hostPorts */
             $hostPorts = array_map($this->portAllocator->allocateForContainerPort(...), $containerPorts);
 
             $this->configurePortMapping($containerPorts, $hostPorts);
@@ -74,7 +76,9 @@ final readonly class ContainerBuilder
             return $this;
         }
 
+        /** @var list<int|string> $containerPorts */
         $containerPorts = [];
+        /** @var list<int> $hostPorts */
         $hostPorts = [];
 
         foreach ($ports as $containerPort => $hostPort) {
@@ -89,6 +93,10 @@ final readonly class ContainerBuilder
         return $this;
     }
 
+    /**
+     * @param  list<int|string>  $containerPorts
+     * @param  list<int>  $hostPorts
+     */
     private function configurePortMapping(array $containerPorts, array $hostPorts): void
     {
         $this->container
