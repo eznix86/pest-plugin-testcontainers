@@ -18,6 +18,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
+    - name: Set up Docker
+      uses: docker/setup-buildx-action@v3
+
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
