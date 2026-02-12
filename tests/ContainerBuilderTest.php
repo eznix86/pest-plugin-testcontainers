@@ -88,3 +88,100 @@ it('returns raw command output and raw logs when needed', function () {
 
     expect($container->rawLogs())->toContain('raw-log-check');
 });
+
+it('reuses the same named container instance', function () {
+    /** @var TestCase $testCase */
+    $testCase = $this;
+
+    $reuseName = 'pest-plugin-reuse-'.str_replace('.', '-', uniqid('', true));
+
+    $firstContainer = $testCase->container('alpine:3.20')
+        ->reuse($reuseName)
+        ->command(['sh', '-lc', 'while true; do sleep 1; done'])
+        ->start();
+
+    $secondContainer = $testCase->container('alpine:3.20')
+        ->reuse($reuseName)
+        ->command(['sh', '-lc', 'while true; do sleep 1; done'])
+        ->start();
+
+    expect($firstContainer->raw()->getId())
+        ->toBe($secondContainer->raw()->getId());
+
+    $firstContainer->stop();
+});
+
+it('rejects empty reuse names', function () {
+    /** @var TestCase $testCase */
+    $testCase = $this;
+
+    expect(fn () => $testCase->container('alpine:3.20')->reuse(''))
+        ->toThrow(InvalidArgumentException::class, 'Reuse container name cannot be empty.');
+});
+
+it('scopes reusable containers per worker token when requested', function () {
+    /** @var TestCase $testCase */
+    $testCase = $this;
+
+    $reuseName = 'pest-plugin-reuse-worker-'.str_replace('.', '-', uniqid('', true));
+    $existingToken = getenv('TEST_TOKEN');
+    $existingServerToken = $_SERVER['TEST_TOKEN'] ?? null;
+    $existingEnvToken = $_ENV['TEST_TOKEN'] ?? null;
+    $alphaContainer = null;
+    $betaContainer = null;
+
+    try {
+        putenv('TEST_TOKEN=alpha');
+        $_SERVER['TEST_TOKEN'] = 'alpha';
+        $_ENV['TEST_TOKEN'] = 'alpha';
+
+        $alphaContainer = $testCase->container('alpine:3.20')
+            ->reuse($reuseName, perWorker: true)
+            ->command(['sh', '-lc', 'while true; do sleep 1; done'])
+            ->start();
+
+        putenv('TEST_TOKEN=beta');
+        $_SERVER['TEST_TOKEN'] = 'beta';
+        $_ENV['TEST_TOKEN'] = 'beta';
+
+        $betaContainer = $testCase->container('alpine:3.20')
+            ->reuse($reuseName, perWorker: true)
+            ->command(['sh', '-lc', 'while true; do sleep 1; done'])
+            ->start();
+
+        expect($alphaContainer->raw()->getName())
+            ->toBe($reuseName.'-worker-alpha');
+
+        expect($betaContainer->raw()->getName())
+            ->toBe($reuseName.'-worker-beta');
+
+        expect($alphaContainer->raw()->getId())
+            ->not->toBe($betaContainer->raw()->getId());
+    } finally {
+        if ($alphaContainer !== null) {
+            $alphaContainer->stop();
+        }
+
+        if ($betaContainer !== null) {
+            $betaContainer->stop();
+        }
+
+        if (is_string($existingToken) && $existingToken !== '') {
+            putenv('TEST_TOKEN='.$existingToken);
+        } else {
+            putenv('TEST_TOKEN');
+        }
+
+        if (is_string($existingServerToken)) {
+            $_SERVER['TEST_TOKEN'] = $existingServerToken;
+        } else {
+            unset($_SERVER['TEST_TOKEN']);
+        }
+
+        if (is_string($existingEnvToken)) {
+            $_ENV['TEST_TOKEN'] = $existingEnvToken;
+        } else {
+            unset($_ENV['TEST_TOKEN']);
+        }
+    }
+});

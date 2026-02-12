@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Eznix86\PestPluginTestContainers;
 
+use Eznix86\PestPluginTestContainers\Container\ContainerBuilder;
+use Eznix86\PestPluginTestContainers\Container\StartedContainer;
 use Throwable;
 
 trait InteractsWithContainers
@@ -28,6 +30,10 @@ trait InteractsWithContainers
 
     protected function registerContainer(StartedContainer $container): StartedContainer
     {
+        if ($container->shouldSkipAutoCleanup()) {
+            return $container;
+        }
+
         $container->onStop(function (StartedContainer $stoppedContainer): void {
             $this->removeRegisteredContainer($stoppedContainer);
         });

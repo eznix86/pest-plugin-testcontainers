@@ -7,7 +7,7 @@ namespace Eznix86\PestPluginTestContainers\Builders;
 use Eznix86\PestPluginTestContainers\Concerns\ConfiguresCache;
 use Eznix86\PestPluginTestContainers\Concerns\ConfiguresQueue;
 use Eznix86\PestPluginTestContainers\Concerns\HasSinglePassPhrase;
-use Eznix86\PestPluginTestContainers\ContainerBuilder;
+use Eznix86\PestPluginTestContainers\Container\ContainerBuilder;
 
 final class RedisContainerBuilder extends SpecializedContainerBuilder
 {

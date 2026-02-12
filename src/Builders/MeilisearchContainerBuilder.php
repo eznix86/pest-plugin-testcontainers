@@ -6,7 +6,7 @@ namespace Eznix86\PestPluginTestContainers\Builders;
 
 use Eznix86\PestPluginTestContainers\Concerns\ConfiguresSearch;
 use Eznix86\PestPluginTestContainers\Concerns\HasSinglePassPhrase;
-use Eznix86\PestPluginTestContainers\ContainerBuilder;
+use Eznix86\PestPluginTestContainers\Container\ContainerBuilder;
 
 final class MeilisearchContainerBuilder extends SpecializedContainerBuilder
 {

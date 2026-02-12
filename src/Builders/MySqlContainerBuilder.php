@@ -8,7 +8,7 @@ use Eznix86\PestPluginTestContainers\Concerns\ConfiguresCache;
 use Eznix86\PestPluginTestContainers\Concerns\ConfiguresDatabase;
 use Eznix86\PestPluginTestContainers\Concerns\ConfiguresQueue;
 use Eznix86\PestPluginTestContainers\Concerns\HasCredentials;
-use Eznix86\PestPluginTestContainers\ContainerBuilder;
+use Eznix86\PestPluginTestContainers\Container\ContainerBuilder;
 
 final class MySqlContainerBuilder extends SpecializedContainerBuilder
 {

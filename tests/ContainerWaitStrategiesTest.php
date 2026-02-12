@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Eznix86\PestPluginTestContainers\StartedContainer;
+use Eznix86\PestPluginTestContainers\Container\StartedContainer;
 use Eznix86\PestPluginTestContainers\Tests\TestCase;
 
 it('waits for command success before continuing', function () {

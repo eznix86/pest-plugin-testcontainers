@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Eznix86\PestPluginTestContainers;
+namespace Eznix86\PestPluginTestContainers\Container;
 
 use PHPUnit\Framework\Assert;
 
@@ -17,42 +17,22 @@ final class ContainerExpectation
 
     public function toExist(): self
     {
-        $path = $this->pathSubject();
-        $result = $this->container->exec(['sh', '-lc', 'test -e '.escapeshellarg($path)]);
-
-        Assert::assertSame(0, $result->exitCode, sprintf('Expected path "%s" to exist. Output: %s', $path, $result->output));
-
-        return $this;
+        return $this->assertPathCondition('test -e', 'Expected path "%s" to exist. Output: %s');
     }
 
     public function toNotExist(): self
     {
-        $path = $this->pathSubject();
-        $result = $this->container->exec(['sh', '-lc', 'test ! -e '.escapeshellarg($path)]);
-
-        Assert::assertSame(0, $result->exitCode, sprintf('Expected path "%s" to not exist. Output: %s', $path, $result->output));
-
-        return $this;
+        return $this->assertPathCondition('test ! -e', 'Expected path "%s" to not exist. Output: %s');
     }
 
     public function toBeDirectory(): self
     {
-        $path = $this->pathSubject();
-        $result = $this->container->exec(['sh', '-lc', 'test -d '.escapeshellarg($path)]);
-
-        Assert::assertSame(0, $result->exitCode, sprintf('Expected path "%s" to be a directory. Output: %s', $path, $result->output));
-
-        return $this;
+        return $this->assertPathCondition('test -d', 'Expected path "%s" to be a directory. Output: %s');
     }
 
     public function toBeReadable(): self
     {
-        $path = $this->pathSubject();
-        $result = $this->container->exec(['sh', '-lc', 'test -r '.escapeshellarg($path)]);
-
-        Assert::assertSame(0, $result->exitCode, sprintf('Expected path "%s" to be readable. Output: %s', $path, $result->output));
-
-        return $this;
+        return $this->assertPathCondition('test -r', 'Expected path "%s" to be readable. Output: %s');
     }
 
     public function toRunSuccessfully(): self
@@ -125,6 +105,16 @@ final class ContainerExpectation
         Assert::assertIsString($this->subject, 'Expected path/log subject to be a string.');
 
         return $this->subject;
+    }
+
+    private function assertPathCondition(string $testCommand, string $message): self
+    {
+        $path = $this->pathSubject();
+        $result = $this->container->exec(['sh', '-lc', $testCommand.' '.escapeshellarg($path)]);
+
+        Assert::assertSame(0, $result->exitCode, sprintf($message, $path, $result->output));
+
+        return $this;
     }
 
     private function runCommandSubject(): ExecResult

@@ -6,8 +6,8 @@ namespace Eznix86\PestPluginTestContainers\Builders;
 
 use Closure;
 use Eznix86\PestPluginTestContainers\Concerns\HasCustomImage;
-use Eznix86\PestPluginTestContainers\ContainerBuilder;
-use Eznix86\PestPluginTestContainers\StartedContainer;
+use Eznix86\PestPluginTestContainers\Container\ContainerBuilder;
+use Eznix86\PestPluginTestContainers\Container\StartedContainer;
 
 abstract class SpecializedContainerBuilder
 {
@@ -49,9 +49,7 @@ abstract class SpecializedContainerBuilder
      */
     public function ports(array $ports): static
     {
-        $this->recordBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->ports($ports));
-
-        return $this;
+        return $this->applyBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->ports($ports));
     }
 
     /**
@@ -59,9 +57,7 @@ abstract class SpecializedContainerBuilder
      */
     public function env(array $env): static
     {
-        $this->recordBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->env($env));
-
-        return $this;
+        return $this->applyBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->env($env));
     }
 
     /**
@@ -69,16 +65,17 @@ abstract class SpecializedContainerBuilder
      */
     public function labels(array $labels): static
     {
-        $this->recordBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->labels($labels));
-
-        return $this;
+        return $this->applyBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->labels($labels));
     }
 
     public function volume(string $sourcePath, string $containerPath): static
     {
-        $this->recordBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->volume($sourcePath, $containerPath));
+        return $this->applyBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->volume($sourcePath, $containerPath));
+    }
 
-        return $this;
+    public function reuse(string $name, bool $perWorker = false): static
+    {
+        return $this->applyBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->reuse($name, $perWorker));
     }
 
     /**
@@ -86,9 +83,7 @@ abstract class SpecializedContainerBuilder
      */
     public function command(array $command): static
     {
-        $this->recordBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->command($command));
-
-        return $this;
+        return $this->applyBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->command($command));
     }
 
     /**
@@ -96,9 +91,7 @@ abstract class SpecializedContainerBuilder
      */
     public function healthcheck(array $command): static
     {
-        $this->recordBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->healthcheck($command));
-
-        return $this;
+        return $this->applyBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->healthcheck($command));
     }
 
     public function waitForLog(
@@ -107,14 +100,12 @@ abstract class SpecializedContainerBuilder
         int $timeoutSeconds = 30,
         int $pollIntervalMilliseconds = 500,
     ): static {
-        $this->recordBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->waitForLog(
+        return $this->applyBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->waitForLog(
             $message,
             $regex,
             $timeoutSeconds,
             $pollIntervalMilliseconds,
         ));
-
-        return $this;
     }
 
     /**
@@ -133,7 +124,7 @@ abstract class SpecializedContainerBuilder
         int $readTimeoutMilliseconds = 1000,
         array $headers = [],
     ): static {
-        $this->recordBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->waitForHttp(
+        return $this->applyBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->waitForHttp(
             $path,
             $port,
             $expectedStatusCode,
@@ -145,8 +136,6 @@ abstract class SpecializedContainerBuilder
             $readTimeoutMilliseconds,
             $headers,
         ));
-
-        return $this;
     }
 
     public function waitForPort(
@@ -154,13 +143,11 @@ abstract class SpecializedContainerBuilder
         int $timeoutSeconds = 30,
         int $pollIntervalMilliseconds = 500,
     ): static {
-        $this->recordBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->waitForPort(
+        return $this->applyBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->waitForPort(
             $port,
             $timeoutSeconds,
             $pollIntervalMilliseconds,
         ));
-
-        return $this;
     }
 
     /**
@@ -171,11 +158,19 @@ abstract class SpecializedContainerBuilder
         int $timeoutSeconds = 30,
         int $pollIntervalMilliseconds = 500,
     ): static {
-        $this->recordBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->waitForCommand(
+        return $this->applyBuilderOperation(static fn (ContainerBuilder $builder): mixed => $builder->waitForCommand(
             $command,
             $timeoutSeconds,
             $pollIntervalMilliseconds,
         ));
+    }
+
+    /**
+     * @param  callable(ContainerBuilder): mixed  $operation
+     */
+    private function applyBuilderOperation(callable $operation): static
+    {
+        $this->recordBuilderOperation($operation);
 
         return $this;
     }

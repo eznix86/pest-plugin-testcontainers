@@ -2,13 +2,11 @@
 
 declare(strict_types=1);
 
-use Eznix86\PestPluginTestContainers\StartedContainer;
+use Eznix86\PestPluginTestContainers\Container\StartedContainer;
 use Eznix86\PestPluginTestContainers\Tests\TestCase;
 use Random\RandomException;
 
-it(/**
- * @throws RandomException
- */ 'maps unique host ports for multiple nginx containers', function () {
+it('maps unique host ports for multiple nginx containers', function () {
     /** @var TestCase $testCase */
     $testCase = $this;
 
@@ -30,12 +28,7 @@ it(/**
         ->and(array_unique($ports))->toHaveCount(3);
 
     foreach ($containers as $index => $container) {
-
-        try {
-            $marker = sprintf('nginx-%d-%s', $index, bin2hex(random_bytes(8)));
-        } catch (RandomException $e) {
-            throw new RuntimeException('Unable to generate a random marker for nginx container.', 0, $e);
-        }
+        $marker = randomMarker(sprintf('nginx-%d', $index));
 
         $container
             ->expect('printf %s '.escapeshellarg($marker).' > /usr/share/nginx/html/index.html')
@@ -50,10 +43,7 @@ it(/**
     }
 });
 
-it(/**
- * @throws Throwable
- * @throws RandomException
- */ 'maps a requested host port for nginx', function () {
+it('maps a requested host port for nginx', function () {
     /** @var TestCase $testCase */
     $testCase = $this;
 
@@ -83,7 +73,7 @@ it(/**
 
     expect($container->getGeneratedPortFor(80))->toBe($requestedPort);
 
-    $marker = 'fixed-port-'.bin2hex(random_bytes(8));
+    $marker = randomMarker('fixed-port');
 
     $container
         ->expect('printf %s '.escapeshellarg($marker).' > /usr/share/nginx/html/index.html')
@@ -96,6 +86,15 @@ it(/**
     expect($status)->toBe(200)
         ->and($body)->toContain($marker);
 });
+
+function randomMarker(string $prefix): string
+{
+    try {
+        return sprintf('%s-%s', $prefix, bin2hex(random_bytes(8)));
+    } catch (RandomException $exception) {
+        throw new RuntimeException('Unable to generate a random marker for nginx container.', 0, $exception);
+    }
+}
 
 /**
  * @return array{0: int, 1: string}

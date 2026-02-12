@@ -2,9 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Eznix86\PestPluginTestContainers;
+namespace Eznix86\PestPluginTestContainers\Container;
 
 use Closure;
+use Eznix86\PestPluginTestContainers\Container\PortMapping\FixedPortSequenceGenerator;
+use Eznix86\PestPluginTestContainers\Container\PortMapping\ProtocolAwareRandomUniquePortAllocator;
+use Eznix86\PestPluginTestContainers\Container\PortMapping\SaferRandomUniquePortGenerator;
+use Eznix86\PestPluginTestContainers\Container\Reuse\ReusableContainerResolver;
+use Eznix86\PestPluginTestContainers\Container\Reuse\ReuseOptions;
+use Eznix86\PestPluginTestContainers\Container\Reuse\WorkerTokenResolver;
 use InvalidArgumentException;
 use Testcontainers\Container\GenericContainer;
 use Testcontainers\Container\HttpMethod;
@@ -18,6 +24,12 @@ final readonly class ContainerBuilder
     private GenericContainer $container;
 
     private ProtocolAwareRandomUniquePortAllocator $portAllocator;
+
+    private ReuseOptions $reuseOptions;
+
+    private ReusableContainerResolver $reusableContainerResolver;
+
+    private WorkerTokenResolver $workerTokenResolver;
 
     /**
      * @var Closure(StartedContainer): StartedContainer
@@ -41,6 +53,9 @@ final readonly class ContainerBuilder
         $this->container = (new GenericContainer($image))
             ->withPortGenerator(new SaferRandomUniquePortGenerator);
         $this->portAllocator = new ProtocolAwareRandomUniquePortAllocator;
+        $this->reuseOptions = new ReuseOptions;
+        $this->reusableContainerResolver = new ReusableContainerResolver;
+        $this->workerTokenResolver = new WorkerTokenResolver;
         $this->registerContainer = Closure::fromCallable($registerContainer);
         $this->skipTest = Closure::fromCallable($skipTest);
     }
@@ -51,19 +66,10 @@ final readonly class ContainerBuilder
     public function ports(array $ports): self
     {
         if (array_is_list($ports)) {
-            $containerPorts = array_map(
-                static fn (int|string $port): int|string => is_numeric($port) ? (int) $port : $port,
-                $ports,
-            );
+            $containerPorts = array_map($this->normalizeContainerPort(...), $ports);
+            $hostPorts = array_map($this->portAllocator->allocateForContainerPort(...), $containerPorts);
 
-            $hostPorts = array_map(
-                $this->portAllocator->allocateForContainerPort(...),
-                $containerPorts,
-            );
-
-            $this->container
-                ->withExposedPorts(...$containerPorts)
-                ->withPortGenerator(new FixedPortSequenceGenerator($hostPorts));
+            $this->configurePortMapping($containerPorts, $hostPorts);
 
             return $this;
         }
@@ -72,19 +78,27 @@ final readonly class ContainerBuilder
         $hostPorts = [];
 
         foreach ($ports as $containerPort => $hostPort) {
-            $normalizedContainerPort = is_numeric($containerPort)
-                ? (int) $containerPort
-                : $containerPort;
+            $normalizedContainerPort = $this->normalizeContainerPort($containerPort);
 
             $containerPorts[] = $normalizedContainerPort;
             $hostPorts[] = $this->normalizeHostPort($hostPort, $normalizedContainerPort);
         }
 
+        $this->configurePortMapping($containerPorts, $hostPorts);
+
+        return $this;
+    }
+
+    private function configurePortMapping(array $containerPorts, array $hostPorts): void
+    {
         $this->container
             ->withExposedPorts(...$containerPorts)
             ->withPortGenerator(new FixedPortSequenceGenerator($hostPorts));
+    }
 
-        return $this;
+    private function normalizeContainerPort(int|string $port): int|string
+    {
+        return is_numeric($port) ? (int) $port : $port;
     }
 
     private function normalizeHostPort(mixed $hostPort, int|string $containerPort): int
@@ -126,6 +140,19 @@ final readonly class ContainerBuilder
     public function volume(string $sourcePath, string $containerPath): self
     {
         $this->container->withMount($sourcePath, $containerPath);
+
+        return $this;
+    }
+
+    public function reuse(string $name, bool $perWorker = false): self
+    {
+        if ($name === '') {
+            throw new InvalidArgumentException('Reuse container name cannot be empty.');
+        }
+
+        $this->reuseOptions->name = $name;
+        $this->reuseOptions->perWorker = $perWorker;
+        $this->container->withName($this->resolveReuseName());
 
         return $this;
     }
@@ -241,11 +268,54 @@ final readonly class ContainerBuilder
     public function start(): StartedContainer
     {
         try {
+            if ($this->reuseOptions->name !== null) {
+                $reuseName = $this->resolveReuseName();
+                $reusedContainer = $this->reusableContainerResolver->resolveRunning($reuseName);
+
+                if ($reusedContainer !== null) {
+                    return ($this->registerContainer)($reusedContainer);
+                }
+            }
+
             $startedContainer = new StartedContainer($this->container->start());
+
+            if ($this->reuseOptions->name !== null) {
+                $startedContainer->skipAutoCleanup();
+            }
 
             return ($this->registerContainer)($startedContainer);
         } catch (Throwable $exception) {
+            if ($this->reuseOptions->name !== null && $this->reusableContainerResolver->isNameConflict($exception)) {
+                $reusedContainer = $this->reusableContainerResolver->waitUntilRunning($this->resolveReuseName());
+
+                if ($reusedContainer !== null) {
+                    return ($this->registerContainer)($reusedContainer);
+                }
+            }
+
             ($this->skipTest)('Docker is unavailable for container test: '.$exception->getMessage());
         }
+    }
+
+    private function resolveReuseName(): string
+    {
+        $name = $this->reuseOptions->name;
+
+        if (! is_string($name) || $name === '') {
+            throw new InvalidArgumentException('Reuse container name cannot be empty.');
+        }
+
+        if (! $this->reuseOptions->perWorker) {
+            return $name;
+        }
+
+        $workerToken = $this->resolveWorkerToken();
+
+        return $workerToken === null ? $name : sprintf('%s-worker-%s', $name, $workerToken);
+    }
+
+    private function resolveWorkerToken(): ?string
+    {
+        return $this->workerTokenResolver->resolve();
     }
 }

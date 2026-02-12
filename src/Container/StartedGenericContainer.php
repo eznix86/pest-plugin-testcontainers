@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Eznix86\PestPluginTestContainers;
+namespace Eznix86\PestPluginTestContainers\Container;
 
 use Docker\API\Endpoint\ContainerLogs;
 use Docker\API\Endpoint\ExecStart;

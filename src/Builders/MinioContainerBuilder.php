@@ -6,7 +6,7 @@ namespace Eznix86\PestPluginTestContainers\Builders;
 
 use Eznix86\PestPluginTestContainers\Concerns\ConfiguresStorage;
 use Eznix86\PestPluginTestContainers\Concerns\HasCredentials;
-use Eznix86\PestPluginTestContainers\ContainerBuilder;
+use Eznix86\PestPluginTestContainers\Container\ContainerBuilder;
 
 final class MinioContainerBuilder extends SpecializedContainerBuilder
 {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Eznix86\PestPluginTestContainers;
+namespace Eznix86\PestPluginTestContainers\Container;
 
 use Closure;
 use Docker\API\Model\ExecIdJsonGetResponse200;
@@ -12,12 +12,22 @@ use Throwable;
 
 final class StartedContainer
 {
+    private const int MAPPED_PORT_MAX_ATTEMPTS = 30;
+
+    private const int MAPPED_PORT_RETRY_DELAY_MICROSECONDS = 100_000;
+
+    private const string DOCKER_INSPECT_RACE_ERROR = 'foreach() argument must be of type array|object, null given';
+
+    private const string PORT_BINDING_RACE_ERROR = 'No host port left to assign for mapped container ports.';
+
     /**
      * @var Closure(self): void|null
      */
     private ?Closure $onStop = null;
 
     private bool $stopped = false;
+
+    private bool $skipAutoCleanup = false;
 
     public function __construct(
         UnpatchedGenericContainer $container,
@@ -37,32 +47,34 @@ final class StartedContainer
     public function getGeneratedPortFor(int $containerPort): int
     {
         $attempts = 0;
-        $maxAttempts = 30;
         $lastException = null;
 
-        while ($attempts < $maxAttempts) {
+        while ($attempts < self::MAPPED_PORT_MAX_ATTEMPTS) {
             try {
                 return $this->container->getMappedPort($containerPort);
             } catch (Throwable $exception) {
-                $message = $exception->getMessage();
-
-                $isTransientDockerInspectRace = str_contains($message, 'foreach() argument must be of type array|object, null given');
-                $isTransientPortBindingRace = str_contains($message, 'No host port left to assign for mapped container ports.');
-
-                if (! $isTransientDockerInspectRace && ! $isTransientPortBindingRace) {
+                if (! $this->isTransientMappedPortRace($exception)) {
                     throw $exception;
                 }
 
                 $lastException = $exception;
-                usleep(100_000);
+                usleep(self::MAPPED_PORT_RETRY_DELAY_MICROSECONDS);
                 $attempts++;
             }
         }
 
         throw new RuntimeException(
-            sprintf('Mapped port for container port %d was not available after %d attempts.', $containerPort, $maxAttempts),
+            sprintf('Mapped port for container port %d was not available after %d attempts.', $containerPort, self::MAPPED_PORT_MAX_ATTEMPTS),
             previous: $lastException,
         );
+    }
+
+    private function isTransientMappedPortRace(Throwable $exception): bool
+    {
+        $message = $exception->getMessage();
+
+        return str_contains($message, self::DOCKER_INSPECT_RACE_ERROR)
+            || str_contains($message, self::PORT_BINDING_RACE_ERROR);
     }
 
     public function mappedPort(int $port): int
@@ -99,6 +111,18 @@ final class StartedContainer
     public function raw(): StartedGenericContainer
     {
         return $this->container;
+    }
+
+    public function skipAutoCleanup(): self
+    {
+        $this->skipAutoCleanup = true;
+
+        return $this;
+    }
+
+    public function shouldSkipAutoCleanup(): bool
+    {
+        return $this->skipAutoCleanup;
     }
 
     /**

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Eznix86\PestPluginTestContainers\Concerns;
 
 use Eznix86\PestPluginTestContainers\ConfigInjectors\StorageConfigInjector;
-use Eznix86\PestPluginTestContainers\StartedContainer;
+use Eznix86\PestPluginTestContainers\Container\StartedContainer;
 
 trait ConfiguresStorage
 {

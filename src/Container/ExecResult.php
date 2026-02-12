@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Eznix86\PestPluginTestContainers;
+namespace Eznix86\PestPluginTestContainers\Container;
 
 final readonly class ExecResult
 {

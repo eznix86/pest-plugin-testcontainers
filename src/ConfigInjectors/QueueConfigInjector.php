@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Eznix86\PestPluginTestContainers\ConfigInjectors;
 
-use Eznix86\PestPluginTestContainers\StartedContainer;
+use Eznix86\PestPluginTestContainers\Container\StartedContainer;
 
 final class QueueConfigInjector
 {
@@ -15,6 +15,8 @@ final class QueueConfigInjector
         ?string $connection = null
     ): void {
         $connection ??= 'testcontainer';
+        $host = $container->host();
+        $mappedPort = $container->mappedPort($defaultPort);
 
         $config = match ($driver) {
             'redis' => [
@@ -32,8 +34,8 @@ final class QueueConfigInjector
             ],
             default => [
                 'driver' => $driver,
-                'host' => $container->host(),
-                'port' => $container->mappedPort($defaultPort),
+                'host' => $host,
+                'port' => $mappedPort,
             ],
         };
 
@@ -44,8 +46,8 @@ final class QueueConfigInjector
 
         if ($driver === 'redis') {
             $queueConfig['database.redis.testcontainer'] = [
-                'host' => $container->host(),
-                'port' => $container->mappedPort($defaultPort),
+                'host' => $host,
+                'port' => $mappedPort,
                 'database' => 0,
             ];
         }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Eznix86\PestPluginTestContainers\ConfigInjectors;
 
-use Eznix86\PestPluginTestContainers\StartedContainer;
+use Eznix86\PestPluginTestContainers\Container\StartedContainer;
 
 final class DatabaseConfigInjector
 {

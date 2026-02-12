@@ -193,6 +193,7 @@ Builder methods available before `start()`:
     ->env(array $env)
     ->labels(array $labels)
     ->volume(string $sourcePath, string $containerPath)
+    ->reuse(string $name, bool $perWorker = false)
     ->command(array $command)
     ->healthcheck(array $command)
     ->waitForLog(string $message, bool $regex = false, int $timeoutSeconds = 30, int $pollIntervalMilliseconds = 500)
@@ -235,6 +236,7 @@ Specialized helper methods:
     ->asStorage(?string $disk = null)
 
 // all specialized builders
+    ->reuse(string $name, bool $perWorker = false)
     ->image(string $image)
 ```
 
@@ -302,6 +304,8 @@ composer test
 ## Notes
 
 - Started containers are tracked per test class and cleaned up during Laravel teardown.
+- `->reuse('name', perWorker: false)` attaches to a running container with that Docker name when available, and keeps it running across test teardown.
+- `->reuse('name', perWorker: true)` appends a worker token suffix in parallel runs so each worker gets its own reusable container name.
 
 ## Credits
 

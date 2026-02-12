@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Eznix86\PestPluginTestContainers\StartedContainer;
+use Eznix86\PestPluginTestContainers\Container\StartedContainer;
 
 use function Eznix86\PestPluginTestContainers\container;
 
