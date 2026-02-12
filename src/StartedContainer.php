@@ -8,6 +8,7 @@ use Closure;
 use Docker\API\Model\ExecIdJsonGetResponse200;
 use RuntimeException;
 use Testcontainers\Container\StartedGenericContainer as UnpatchedGenericContainer;
+use Throwable;
 
 final class StartedContainer
 {
@@ -35,7 +36,33 @@ final class StartedContainer
 
     public function getGeneratedPortFor(int $containerPort): int
     {
-        return $this->container->getMappedPort($containerPort);
+        $attempts = 0;
+        $maxAttempts = 30;
+        $lastException = null;
+
+        while ($attempts < $maxAttempts) {
+            try {
+                return $this->container->getMappedPort($containerPort);
+            } catch (Throwable $exception) {
+                $message = $exception->getMessage();
+
+                $isTransientDockerInspectRace = str_contains($message, 'foreach() argument must be of type array|object, null given');
+                $isTransientPortBindingRace = str_contains($message, 'No host port left to assign for mapped container ports.');
+
+                if (! $isTransientDockerInspectRace && ! $isTransientPortBindingRace) {
+                    throw $exception;
+                }
+
+                $lastException = $exception;
+                usleep(100_000);
+                $attempts++;
+            }
+        }
+
+        throw new RuntimeException(
+            sprintf('Mapped port for container port %d was not available after %d attempts.', $containerPort, $maxAttempts),
+            previous: $lastException,
+        );
     }
 
     public function mappedPort(int $port): int
