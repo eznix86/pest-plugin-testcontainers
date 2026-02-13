@@ -37,7 +37,6 @@ final readonly class ContainerBuilder
      */
     private const array TRANSIENT_DOCKER_START_ERROR_MARKERS = [
         'server error',
-        'timeout reached while waiting for container',
     ];
 
     private GenericContainer $container;

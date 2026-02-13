@@ -46,7 +46,7 @@ it('injects postgres database configuration', function () {
     $builder = postgres()
         ->credentials('app_user', 'secret-pass')
         ->asDatabase('app_test_db')
-        ->waitForCommand(['sh', '-lc', 'psql -U app_user -d app_test_db -tAc "SELECT 1"']);
+        ->waitForCommand(['sh', '-lc', '/usr/bin/pg_isready -h 127.0.0.1 -p 5432 -U "$POSTGRES_USER" -d "$POSTGRES_DB"']);
 
     $container = $builder->start();
     $connection = $container->connectionName();
@@ -69,7 +69,7 @@ it('injects postgres database configuration', function () {
 it('generates and uses a random postgres database name by default', function () {
     $builder = postgres()->asDatabase();
     $databaseName = $builder->databaseName();
-    $builder->waitForCommand(['sh', '-lc', sprintf('psql -U postgres -d %s -tAc "SELECT 1"', $databaseName)]);
+    $builder->waitForCommand(['sh', '-lc', '/usr/bin/pg_isready -h 127.0.0.1 -p 5432 -U "$POSTGRES_USER" -d "$POSTGRES_DB"']);
 
     $container = $builder->start();
     $connection = $container->connectionName();
@@ -86,7 +86,7 @@ it('injects mysql database configuration', function () {
     $builder = mysql()
         ->credentials('app_user', 'secret-pass')
         ->asDatabase('app_test_db')
-        ->waitForCommand(['sh', '-lc', 'mysql -uapp_user -psecret-pass -D app_test_db -N -e "SELECT 1" 2>/dev/null']);
+        ->waitForCommand(['sh', '-lc', 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent']);
 
     $container = $builder->start();
     $connection = $container->connectionName();
@@ -110,7 +110,7 @@ it('generates and uses a random mysql database name by default', function () {
     $databaseName = $builder->databaseName();
     $password = $builder->password();
 
-    $builder->waitForCommand(['sh', '-lc', sprintf('mysql -uroot -p%s -D %s -N -e "SELECT 1" 2>/dev/null', $password, $databaseName)]);
+    $builder->waitForCommand(['sh', '-lc', 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent']);
 
     $container = $builder->start();
     $connection = $container->connectionName();
@@ -147,7 +147,9 @@ it('injects mariadb database configuration', function () {
 });
 
 it('injects postgres cache configuration through database cache store', function () {
-    $builder = postgres()->asCache();
+    $builder = postgres()
+        ->asCache()
+        ->waitForCommand(['sh', '-lc', '/usr/bin/pg_isready -h 127.0.0.1 -p 5432 -U "$POSTGRES_USER" -d "$POSTGRES_DB"']);
     $container = $builder->start();
     $connection = $container->connectionName();
 
@@ -158,7 +160,9 @@ it('injects postgres cache configuration through database cache store', function
 });
 
 it('injects mysql cache configuration through database cache store', function () {
-    $builder = mysql()->asCache();
+    $builder = mysql()
+        ->asCache()
+        ->waitForCommand(['sh', '-lc', 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent']);
     $container = $builder->start();
     $connection = $container->connectionName();
 
@@ -187,7 +191,7 @@ it('uses reuse name as connection name, including per worker suffix', function (
         $builder = postgres()
             ->reuse('shared-postgres', perWorker: true)
             ->asDatabase('shared_db')
-            ->waitForCommand(['sh', '-lc', 'psql -U postgres -d shared_db -tAc "SELECT 1"']);
+            ->waitForCommand(['sh', '-lc', '/usr/bin/pg_isready -h 127.0.0.1 -p 5432 -U "$POSTGRES_USER" -d "$POSTGRES_DB"']);
 
         $container = $builder->start();
         $connection = $container->connectionName();
@@ -209,7 +213,7 @@ it('allows overriding the helper image while preserving builder configuration', 
     $builder = postgres('15')
         ->asDatabase('image_override_db')
         ->image('postgres:16')
-        ->waitForCommand(['sh', '-lc', 'psql -U postgres -d image_override_db -tAc "SELECT 1"']);
+        ->waitForCommand(['sh', '-lc', '/usr/bin/pg_isready -h 127.0.0.1 -p 5432 -U "$POSTGRES_USER" -d "$POSTGRES_DB"']);
 
     $container = $builder->start();
     $versionOutput = trimmedOutput($container, ['sh', '-lc', 'psql --version']);

@@ -15,7 +15,7 @@
         "illuminate/testing": "^12.0",
         "pestphp/pest": "^4.3.1",
         "pestphp/pest-plugin": "^4.0.0",
-        "testcontainers/testcontainers": "^1.0",
+        "testcontainers/testcontainers": "^1.0.4",
         "beluga-php/docker-php": "^1.45.6"
     },
     "autoload": {

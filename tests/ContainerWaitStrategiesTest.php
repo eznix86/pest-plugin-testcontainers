@@ -51,7 +51,7 @@ it('waits for http endpoint before continuing', function () {
 
     $container = $testCase->container('nginx:alpine')
         ->ports([80])
-        ->waitForHttp(path: '/', port: 80, timeoutSeconds: 120)
+        ->waitForHttp(path: '/', port: 80, timeoutSeconds: 20)
         ->start();
 
     expect($container)->toBeInstanceOf(StartedContainer::class)
