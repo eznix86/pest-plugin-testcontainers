@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+cd "$ROOT_DIR"
+
+if [ "${SKIP_HOOKS:-0}" = "1" ]; then
+  echo "[pre-commit] Skipping checks because SKIP_HOOKS=1"
+  exit 0
+fi
+
+if [ ! -f "vendor/autoload.php" ]; then
+  echo "[pre-commit] Dependencies are missing. Run: composer install"
+  exit 1
+fi
+
+run_step() {
+  local label="$1"
+  local command="$2"
+
+  echo "[pre-commit] $label"
+  eval "$command"
+}
+
+run_step "Rector" "composer test:refacto"
+run_step "Tests" "composer test:unit"
+run_step "PHPStan" "composer test:types"
+run_step "Pint" "composer test:lint"
+
+echo "[pre-commit] All checks passed."

@@ -49,6 +49,13 @@
         }
     },
     "scripts": {
+        "install-git-hooks": "@php scripts/install-git-hooks.php",
+        "post-install-cmd": [
+            "@install-git-hooks"
+        ],
+        "post-update-cmd": [
+            "@install-git-hooks"
+        ],
         "refacto": "rector",
         "lint": "pint",
         "test:fix": [

@@ -17,6 +17,8 @@ From this package directory:
 composer install
 ```
 
+`composer install` automatically installs the local Git pre-commit hook.
+
 Docker must be running for integration tests.
 
 ## Quality gates
@@ -33,6 +35,27 @@ Or run everything:
 
 ```bash
 composer test
+```
+
+## Pre-commit hook
+
+The pre-commit hook runs these checks (in this order):
+
+1. `composer test:refacto`
+2. `composer test:unit`
+3. `composer test:types`
+4. `composer test:lint`
+
+If needed, reinstall hooks manually with:
+
+```bash
+composer install-git-hooks
+```
+
+To bypass hooks for an exceptional commit:
+
+```bash
+SKIP_HOOKS=1 git commit -m "your message"
 ```
 
 ## Contribution guidelines
