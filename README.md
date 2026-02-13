@@ -1,6 +1,31 @@
 # Pest Plugin Testcontainers
 
-`eznix86/pest-plugin-testcontainers` is a Laravel-focused Pest plugin that starts containers from your tests.
+`eznix86/pest-plugin-testcontainers` is a Laravel-focused Pest plugin that starts containers directly from your tests.
+
+## Why use this plugin?
+
+- Spin up real services (Postgres, Redis, Meilisearch, MinIO, etc.) in tests with minimal setup.
+- Configure Laravel integrations (`database`, `cache`, `scout`, `storage`) in one fluent chain.
+- Keep tests deterministic with built-in wait strategies and optional container reuse.
+
+## Table of Contents
+
+- [Requirements](#requirements)
+- [Install](#install)
+- [Quick Start (Laravel + Pest)](#quick-start-laravel--pest)
+- [Function API](#function-api)
+- [Laravel Helpers](#laravel-helpers)
+  - [Database (`asDatabase`)](#database-asdatabase)
+  - [Cache (`asCache`)](#cache-ascache)
+  - [Search (`asSearch`)](#search-assearch)
+  - [Storage (`asStorage`)](#storage-asstorage)
+- [Expectations](#expectations)
+- [API Reference](#api-reference)
+- [Docker Comparison](#docker-comparison)
+- [Local Development](#local-development)
+- [Troubleshooting](#troubleshooting)
+- [Notes](#notes)
+- [Credits](#credits)
 
 ## Requirements
 
@@ -14,11 +39,25 @@
 composer require --dev eznix86/pest-plugin-testcontainers
 ```
 
-The plugin autoloads itself.
+The plugin autoloads itself and auto-registers the helper functions, expectations, and `InteractsWithContainers` trait for Pest tests.
 
 ## Quick Start (Laravel + Pest)
 
-### 1) Add the trait to your base test case
+### 1) Make Pest use your Laravel base test case
+
+`tests/Pest.php`
+
+```php
+<?php
+
+use Tests\TestCase;
+
+pest()->extend(TestCase::class)->in('Feature', 'Unit');
+```
+
+### 2) (Optional) Add the trait explicitly in your base test case
+
+This is usually not required because the plugin auto-registers `InteractsWithContainers` for Pest tests.
 
 `tests/TestCase.php`
 
@@ -36,18 +75,6 @@ abstract class TestCase extends BaseTestCase
 }
 ```
 
-### 2) Make Pest use that test case
-
-`tests/Pest.php`
-
-```php
-<?php
-
-use Tests\TestCase;
-
-pest()->extend(TestCase::class)->in('Feature', 'Unit');
-```
-
 ### 3) Write your first container test
 
 ```php
@@ -61,7 +88,7 @@ it('starts nginx and exposes a mapped port', function () {
 });
 ```
 
-## function API
+## Function API
 
 You can use either style:
 
@@ -83,7 +110,7 @@ it('starts nginx with the helper function', function () {
 });
 ```
 
-Note: the function helper still requires a running Pest test that uses a test case with `InteractsWithContainers`.
+Note: the function helper must run inside an active Pest test. `InteractsWithContainers` is auto-registered by the plugin (or can be added manually).
 
 ## Laravel Helpers
 
@@ -104,7 +131,7 @@ All specialized builders also support:
 ### Database (`asDatabase`)
 
 Use `postgres()`, `mysql()`, or `mariadb()` with `asDatabase()` to inject a dedicated Laravel database connection and set it as default.
-By default the connection name is randomized per builder (`testcontainer_xxx`). If `reuse('name')` is enabled, the connection name matches the reuse name (including `perWorker` suffixes).
+By default, the connection name is randomized per builder (`testcontainer_xxx`). If `reuse('name')` is enabled, the connection name matches the reuse name (including `perWorker` suffixes).
 You can read that name from `$container->connectionName()` after `start()`.
 
 ```php
@@ -305,12 +332,19 @@ $container = $this->container('nginx:alpine')
 
 ## Local Development
 
-From `packages/pest-plugin-testcontainers`:
+From the project root:
 
 ```bash
 composer install
 composer test
 ```
+
+## Troubleshooting
+
+- **Docker is not running**: start Docker Desktop (or your Docker daemon) and rerun tests.
+- **Container startup timeout**: add an explicit wait strategy (`waitForLog`, `waitForHttp`, `waitForPort`, or `waitForCommand`) and increase timeout values.
+- **Port conflicts**: prefer dynamic host ports (`ports([80])`) over fixed host mappings (`ports([80 => 8080])`).
+- **Parallel test collisions**: for reusable containers in parallel runs, use `->reuse('name', perWorker: true)`.
 
 ## Notes
 
