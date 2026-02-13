@@ -172,7 +172,11 @@ abstract class SpecializedContainerBuilder
      */
     private function applyBuilderOperation(callable $operation): static
     {
-        $this->recordBuilderOperation($operation);
+        /** @var Closure(ContainerBuilder): mixed $operationClosure */
+        $operationClosure = Closure::fromCallable($operation);
+
+        $this->builderOperations[] = $operationClosure;
+        $operationClosure($this->builder);
 
         return $this;
     }
@@ -201,17 +205,6 @@ abstract class SpecializedContainerBuilder
         }
 
         return $this->generatedConnectionName ??= sprintf('testcontainer_%s', bin2hex(random_bytes(6)));
-    }
-
-    /**
-     * @param  callable(ContainerBuilder): mixed  $operation
-     */
-    private function recordBuilderOperation(callable $operation): void
-    {
-        /** @var Closure(ContainerBuilder): mixed $operationClosure */
-        $operationClosure = Closure::fromCallable($operation);
-        $this->builderOperations[] = $operationClosure;
-        $operationClosure($this->builder);
     }
 
     protected function prepareContainer(): void {}

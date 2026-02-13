@@ -41,9 +41,4 @@ final class MinioContainerBuilder extends SpecializedContainerBuilder
     {
         return self::DEFAULT_PORT;
     }
-
-    protected function generatePassword(): string
-    {
-        return bin2hex(random_bytes(16));
-    }
 }

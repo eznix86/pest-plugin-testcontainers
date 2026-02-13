@@ -28,5 +28,8 @@ trait HasCredentials
         return $this->password ??= $this->generatePassword();
     }
 
-    abstract protected function generatePassword(): string;
+    protected function generatePassword(): string
+    {
+        return bin2hex(random_bytes(16));
+    }
 }

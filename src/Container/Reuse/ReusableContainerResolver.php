@@ -7,6 +7,7 @@ namespace Eznix86\PestPluginTestContainers\Container\Reuse;
 use Docker\API\Exception\ContainerCreateConflictException;
 use Docker\API\Exception\ContainerInspectNotFoundException;
 use Docker\API\Model\ContainersIdJsonGetResponse200;
+use Docker\Docker;
 use Eznix86\PestPluginTestContainers\Container\StartedContainer;
 use Eznix86\PestPluginTestContainers\Container\StartedGenericContainer;
 use Testcontainers\ContainerClient\DockerContainerClient;
@@ -21,25 +22,13 @@ final class ReusableContainerResolver
     public function resolveRunning(string $name): ?StartedContainer
     {
         $docker = DockerContainerClient::getDockerClient();
-
-        try {
-            /** @var ContainersIdJsonGetResponse200|null $inspect */
-            $inspect = $docker->containerInspect($name);
-        } catch (ContainerInspectNotFoundException) {
-            return null;
-        }
+        $inspect = $this->inspectNamedContainer($docker, $name);
 
         if ($inspect?->getState()?->getStatus() !== 'running') {
             return null;
         }
 
-        $containerId = $inspect->getId();
-
-        if (! is_string($containerId) || $containerId === '') {
-            return null;
-        }
-
-        return (new StartedContainer(new StartedGenericContainer($containerId, $docker)))->skipAutoCleanup();
+        return $this->startedContainerFromInspect($inspect, $docker);
     }
 
     public function waitUntilRunning(string $name): ?StartedContainer
@@ -63,25 +52,17 @@ final class ReusableContainerResolver
     public function resolveRunningOrStart(string $name): ?StartedContainer
     {
         $docker = DockerContainerClient::getDockerClient();
+        $inspect = $this->inspectNamedContainer($docker, $name);
 
-        try {
-            /** @var ContainersIdJsonGetResponse200|null $inspect */
-            $inspect = $docker->containerInspect($name);
-        } catch (ContainerInspectNotFoundException) {
+        if (! $inspect instanceof ContainersIdJsonGetResponse200) {
             return null;
         }
 
-        if ($inspect?->getState()?->getStatus() === 'running') {
-            $containerId = $inspect->getId();
-
-            if (! is_string($containerId) || $containerId === '') {
-                return null;
-            }
-
-            return (new StartedContainer(new StartedGenericContainer($containerId, $docker)))->skipAutoCleanup();
+        if ($inspect->getState()?->getStatus() === 'running') {
+            return $this->startedContainerFromInspect($inspect, $docker);
         }
 
-        $containerId = $inspect?->getId();
+        $containerId = $inspect->getId();
 
         if (! is_string($containerId) || $containerId === '') {
             return null;
@@ -109,5 +90,30 @@ final class ReusableContainerResolver
         }
 
         return false;
+    }
+
+    private function inspectNamedContainer(?Docker $docker, string $name): ?ContainersIdJsonGetResponse200
+    {
+        try {
+            /** @var ContainersIdJsonGetResponse200|null $inspect */
+            $inspect = $docker?->containerInspect($name);
+        } catch (ContainerInspectNotFoundException) {
+            return null;
+        }
+
+        return $inspect;
+    }
+
+    private function startedContainerFromInspect(
+        ContainersIdJsonGetResponse200 $inspect,
+        ?Docker $docker,
+    ): ?StartedContainer {
+        $containerId = $inspect->getId();
+
+        if (! is_string($containerId) || $containerId === '') {
+            return null;
+        }
+
+        return (new StartedContainer(new StartedGenericContainer($containerId, $docker)))->skipAutoCleanup();
     }
 }

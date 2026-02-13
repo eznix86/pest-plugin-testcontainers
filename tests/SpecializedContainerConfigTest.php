@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Eznix86\PestPluginTestContainers\Container\StartedContainer;
 use Illuminate\Support\Facades\Storage;
 
 use function Eznix86\PestPluginTestContainers\mariadb;
@@ -12,12 +13,18 @@ use function Eznix86\PestPluginTestContainers\postgres;
 use function Eznix86\PestPluginTestContainers\redis;
 use function Eznix86\PestPluginTestContainers\typesense;
 
-function trimmedOutput($container, array $command): string
+/**
+ * @param  list<string>  $command
+ */
+function trimmedOutput(StartedContainer $container, array $command): string
 {
     return trim($container->exec($command)->output);
 }
 
-function eventuallyTrimmedOutput($container, array $command, int $attempts = 8, int $sleepMilliseconds = 250): string
+/**
+ * @param  list<string>  $command
+ */
+function eventuallyTrimmedOutput(StartedContainer $container, array $command, int $attempts = 8, int $sleepMilliseconds = 250): string
 {
     $lastExitCode = null;
     $lastOutput = '';

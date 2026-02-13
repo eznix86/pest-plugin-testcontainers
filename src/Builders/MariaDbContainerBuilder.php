@@ -57,9 +57,4 @@ final class MariaDbContainerBuilder extends SpecializedContainerBuilder
     {
         return 'database';
     }
-
-    protected function generatePassword(): string
-    {
-        return bin2hex(random_bytes(16));
-    }
 }

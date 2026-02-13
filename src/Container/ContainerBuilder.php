@@ -68,17 +68,16 @@ final readonly class ContainerBuilder
         callable $registerContainer,
         callable $skipTest,
     ) {
-        $isParallel = $this->isRunningInParallel();
+        $this->container = new GenericContainer($image);
 
-        $portGenerator = $isParallel
-            ? new WorkerPortGenerator
-            : new SaferRandomUniquePortGenerator;
+        if ($this->isRunningInParallel()) {
+            $this->container->withPortGenerator(new WorkerPortGenerator);
+            $this->portAllocator = new WorkerPortAllocator;
+        } else {
+            $this->container->withPortGenerator(new SaferRandomUniquePortGenerator);
+            $this->portAllocator = new ProtocolAwareRandomUniquePortAllocator;
+        }
 
-        $this->container = (new GenericContainer($image))
-            ->withPortGenerator($portGenerator);
-        $this->portAllocator = $isParallel
-            ? new WorkerPortAllocator
-            : new ProtocolAwareRandomUniquePortAllocator;
         $this->reuseOptions = new ReuseOptions;
         $this->reusableContainerResolver = new ReusableContainerResolver;
         $this->workerTokenResolver = new WorkerTokenResolver;
@@ -342,10 +341,9 @@ final readonly class ContainerBuilder
 
     private function startContainerWithRetry(): StartedContainer
     {
-        $attempt = 0;
         $lastException = null;
 
-        while ($attempt < self::START_MAX_ATTEMPTS) {
+        for ($attempt = 0; $attempt < self::START_MAX_ATTEMPTS; $attempt++) {
             try {
                 return new StartedContainer($this->container->start());
             } catch (Throwable $exception) {
@@ -354,18 +352,18 @@ final readonly class ContainerBuilder
                 }
 
                 $this->cleanupFailedContainerAfterTransientStartError();
-
                 $lastException = $exception;
-                $attempt++;
 
-                if ($attempt >= self::START_MAX_ATTEMPTS) {
-                    break;
+                if ($attempt < self::START_MAX_ATTEMPTS - 1) {
+                    usleep($this->startRetryDelayForAttempt($attempt));
                 }
-
-                usleep($this->startRetryDelayForAttempt($attempt - 1));
             }
         }
-        throw $lastException;
+
+        throw new RuntimeException(
+            'Container failed to start after retrying transient Docker errors.',
+            previous: $lastException,
+        );
     }
 
     private function isTransientDockerStartError(Throwable $exception): bool

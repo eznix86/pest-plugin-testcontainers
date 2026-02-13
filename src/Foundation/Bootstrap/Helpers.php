@@ -71,11 +71,9 @@ function minio(?string $version = null): MinioContainerBuilder
 
 function resolveImage(?string $version, string $repository, string $defaultTag): string
 {
-    if ($version !== null) {
-        return sprintf('%s:%s', $repository, $version);
-    }
+    $tag = $version ?? $defaultTag;
 
-    return sprintf('%s:%s', $repository, $defaultTag);
+    return sprintf('%s:%s', $repository, $tag);
 }
 
 function resolveBaseContainerBuilder(string $helperName, string $image): ContainerBuilder

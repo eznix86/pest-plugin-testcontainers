@@ -60,10 +60,9 @@ final class StartedContainer
 
     public function getGeneratedPortFor(int $containerPort): int
     {
-        $attempts = 0;
         $lastException = null;
 
-        while ($attempts < self::MAPPED_PORT_MAX_ATTEMPTS) {
+        for ($attempt = 0; $attempt < self::MAPPED_PORT_MAX_ATTEMPTS; $attempt++) {
             try {
                 return $this->container->getMappedPort($containerPort);
             } catch (Throwable $exception) {
@@ -78,8 +77,10 @@ final class StartedContainer
                 }
 
                 $lastException = $exception;
-                usleep($this->mappedPortRetryDelayForAttempt($attempts));
-                $attempts++;
+
+                if ($attempt < self::MAPPED_PORT_MAX_ATTEMPTS - 1) {
+                    usleep($this->mappedPortRetryDelayForAttempt($attempt));
+                }
             }
         }
 
@@ -150,7 +151,7 @@ final class StartedContainer
             if (! is_string($key)) {
                 continue;
             }
-            if (! str_starts_with((string) $key, $containerPort.'/')) {
+            if (! str_starts_with($key, $containerPort.'/')) {
                 continue;
             }
             $port = $this->extractFirstHostPort($bindings);
