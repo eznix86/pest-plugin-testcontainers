@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use Eznix86\PestPluginTestContainers\Container\PortMapping\FixedPortSequenceGenerator;
 
-it('generates ports in a stable cyclic sequence', function () {
+it('should generate ports in a stable cyclic sequence', function () {
     $generator = new FixedPortSequenceGenerator([41001, 41002]);
 
     expect($generator->generatePort())->toBe(41001)
@@ -13,7 +13,7 @@ it('generates ports in a stable cyclic sequence', function () {
         ->and($generator->generatePort())->toBe(41002);
 });
 
-it('throws when configured with no host ports', function () {
+it('should throw when configured with no host ports', function () {
     $generator = new FixedPortSequenceGenerator([]);
 
     expect(fn () => $generator->generatePort())

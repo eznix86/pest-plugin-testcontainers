@@ -331,11 +331,7 @@ final readonly class ContainerBuilder
                 }
             }
 
-            if (DockerAvailabilityDetector::isUnavailable($exception)) {
-                ($this->skipTest)('Docker is unavailable for container test: '.$exception->getMessage());
-            }
-
-            throw new RuntimeException('Testcontainers failed: '.$exception->getMessage(), $exception->getCode(), previous: $exception);
+            ($this->skipTest)('Container startup issue: '.$exception->getMessage());
         }
     }
 

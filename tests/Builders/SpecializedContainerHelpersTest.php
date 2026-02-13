@@ -18,7 +18,7 @@ use function Eznix86\PestPluginTestContainers\postgres;
 use function Eznix86\PestPluginTestContainers\redis;
 use function Eznix86\PestPluginTestContainers\typesense;
 
-it('provides specialized container helper functions', function () {
+it('should provide specialized container helper functions', function () {
     expect(postgres())->toBeInstanceOf(PostgresContainerBuilder::class)
         ->and(mysql())->toBeInstanceOf(MySqlContainerBuilder::class)
         ->and(mariadb())->toBeInstanceOf(MariaDbContainerBuilder::class)
@@ -28,7 +28,7 @@ it('provides specialized container helper functions', function () {
         ->and(minio())->toBeInstanceOf(MinioContainerBuilder::class);
 });
 
-it('accepts version tags in specialized helpers', function () {
+it('should accept version tags in specialized helpers', function () {
     expect(postgres('18'))->toBeInstanceOf(PostgresContainerBuilder::class)
         ->and(mysql('8.4'))->toBeInstanceOf(MySqlContainerBuilder::class)
         ->and(mariadb('11.8'))->toBeInstanceOf(MariaDbContainerBuilder::class)

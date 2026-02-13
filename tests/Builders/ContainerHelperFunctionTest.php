@@ -6,9 +6,9 @@ use Eznix86\PestPluginTestContainers\Container\StartedContainer;
 
 use function Eznix86\PestPluginTestContainers\container;
 
-it('provides a namespaced container helper function', function () {
+it('should provide a namespaced container helper function', function () {
     $startedContainer = container('alpine:3.20')
-        ->command(['sh', '-lc', 'while true; do sleep 1; done'])
+        ->command(idleContainerCommand())
         ->waitForCommand(['sh', '-lc', 'test -d /bin'])
         ->start();
 

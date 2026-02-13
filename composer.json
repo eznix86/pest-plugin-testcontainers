@@ -61,6 +61,7 @@
         "test:lint:fix": "pint",
         "test:types": "phpstan analyse --ansi  --memory-limit=-1",
         "test:unit": "pest --compact --colors=always",
+        "test:coverage": "herd coverage vendor/bin/pest --coverage --compact --min=100",
         "test": [
             "@test:refacto",
             "@test:lint",

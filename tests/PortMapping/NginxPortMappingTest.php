@@ -6,7 +6,7 @@ use Eznix86\PestPluginTestContainers\Container\StartedContainer;
 use Eznix86\PestPluginTestContainers\Tests\TestCase;
 use Random\RandomException;
 
-it('maps unique host ports for multiple nginx containers', function () {
+it('should map unique host ports for multiple nginx containers', function () {
     /** @var TestCase $testCase */
     $testCase = $this;
 
@@ -43,7 +43,7 @@ it('maps unique host ports for multiple nginx containers', function () {
     }
 });
 
-it('maps a requested host port for nginx', function () {
+it('should map a requested host port for nginx', function () {
     /** @var TestCase $testCase */
     $testCase = $this;
 
