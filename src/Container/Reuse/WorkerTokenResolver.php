@@ -6,31 +6,20 @@ namespace Eznix86\PestPluginTestContainers\Container\Reuse;
 
 final class WorkerTokenResolver
 {
-    /** @var list<string> */
-    private const array ENV_KEYS = [
-        'TEST_TOKEN',
-        'PARATEST',
-        'PARATEST_PROCESS',
-        'PEST_WORKER',
-        'PEST_PARALLEL_PROCESS',
-    ];
-
     public function resolve(): ?string
     {
-        foreach (self::ENV_KEYS as $key) {
-            $value = $_SERVER[$key] ?? $_ENV[$key] ?? getenv($key);
+        $token = $_SERVER['TEST_TOKEN'] ?? $_ENV['TEST_TOKEN'] ?? getenv('TEST_TOKEN');
 
-            if (! is_string($value)) {
-                continue;
-            }
-
-            $normalized = preg_replace('/[^A-Za-z0-9_.-]/', '-', trim($value));
-
-            if (is_string($normalized) && $normalized !== '') {
-                return $normalized;
-            }
+        if (! is_string($token)) {
+            return null;
         }
 
-        return null;
+        $token = trim($token);
+
+        if (! ctype_digit($token)) {
+            return null;
+        }
+
+        return $token;
     }
 }

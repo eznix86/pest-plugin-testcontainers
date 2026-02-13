@@ -37,6 +37,7 @@ Or run everything:
 composer test
 ```
 
+
 ## Pre-commit hook
 
 The pre-commit hook runs these checks (in this order):

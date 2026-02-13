@@ -130,28 +130,26 @@ it('should scope reusable containers per worker token when requested', function 
     $betaContainer = null;
 
     try {
-        withEnvironmentSnapshot(['TEST_TOKEN'], function () use ($testCase, $reuseName, &$alphaContainer, &$betaContainer): void {
-            setEnvironmentValue('TEST_TOKEN', 'alpha');
-
+        withTemporaryEnvironment(['TEST_TOKEN' => '1'], function () use ($testCase, $reuseName, &$alphaContainer): void {
             $alphaContainer = startIdleContainer($testCase, configure: static function ($builder) use ($reuseName): void {
                 $builder->reuse($reuseName, perWorker: true);
             });
 
-            setEnvironmentValue('TEST_TOKEN', 'beta');
+            expect($alphaContainer->raw()->getName())
+                ->toBe($reuseName.'-worker-1');
+        });
 
+        withTemporaryEnvironment(['TEST_TOKEN' => '2'], function () use ($testCase, $reuseName, &$betaContainer): void {
             $betaContainer = startIdleContainer($testCase, configure: static function ($builder) use ($reuseName): void {
                 $builder->reuse($reuseName, perWorker: true);
             });
 
-            expect($alphaContainer->raw()->getName())
-                ->toBe($reuseName.'-worker-alpha');
-
             expect($betaContainer->raw()->getName())
-                ->toBe($reuseName.'-worker-beta');
-
-            expect($alphaContainer->raw()->getId())
-                ->not->toBe($betaContainer->raw()->getId());
+                ->toBe($reuseName.'-worker-2');
         });
+
+        expect($alphaContainer->raw()->getId())
+            ->not->toBe($betaContainer->raw()->getId());
     } finally {
         $alphaContainer?->stop();
         $betaContainer?->stop();
@@ -181,7 +179,51 @@ it('should reuse and restart named container when it exists but is stopped', fun
             ->and($secondContainer->raw()->getId())->toBe($containerId);
     } finally {
         if (is_string($containerId) && $containerId !== '') {
-            DockerContainerClient::getDockerClient()->containerDelete($containerId, ['force' => true]);
+            try {
+                DockerContainerClient::getDockerClient()->containerDelete($containerId, ['force' => true]);
+            } catch (Throwable) {
+                // Container may already have been removed as part of reuse recovery.
+            }
+        }
+    }
+});
+
+it('should recreate reusable container when named container disappeared', function () {
+    /** @var TestCase $testCase */
+    $testCase = $this;
+
+    $reuseName = 'pest-plugin-reuse-recreate-'.str_replace('.', '-', uniqid('', true));
+    $firstContainerId = null;
+    $secondContainerId = null;
+
+    try {
+        $firstContainer = startIdleContainer($testCase, configure: static function ($builder) use ($reuseName): void {
+            $builder->reuse($reuseName);
+        });
+
+        $firstContainerId = $firstContainer->raw()->getId();
+        $firstContainer->raw()->getClient()->containerDelete($firstContainerId, ['force' => true]);
+
+        $secondContainer = startIdleContainer($testCase, configure: static function ($builder) use ($reuseName): void {
+            $builder->reuse($reuseName);
+        });
+
+        $secondContainerId = $secondContainer->raw()->getId();
+
+        expect($firstContainerId)->toBeString()
+            ->and($secondContainerId)->toBeString()
+            ->and($secondContainerId)->not->toBe($firstContainerId);
+    } finally {
+        foreach ([$firstContainerId, $secondContainerId] as $containerId) {
+            if (! is_string($containerId) || $containerId === '') {
+                continue;
+            }
+
+            try {
+                DockerContainerClient::getDockerClient()->containerDelete($containerId, ['force' => true]);
+            } catch (Throwable) {
+                // Best-effort cleanup.
+            }
         }
     }
 });

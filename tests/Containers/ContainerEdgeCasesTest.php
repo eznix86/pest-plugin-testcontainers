@@ -165,9 +165,7 @@ it('should expose configured reuse names with and without worker tokens', functi
     $builder->reuse('plain-reuse-name', perWorker: false);
     expect($builder->configuredReuseName())->toBe('plain-reuse-name');
 
-    withEnvironmentSnapshot(['TEST_TOKEN'], function () use ($builder): void {
-        setEnvironmentValue('TEST_TOKEN', null);
-
+    withTemporaryEnvironment(['TEST_TOKEN' => null], function () use ($builder): void {
         $builder->reuse('worker-reuse-name', perWorker: true);
         expect($builder->configuredReuseName())->toBe('worker-reuse-name');
     });

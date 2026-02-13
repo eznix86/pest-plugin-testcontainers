@@ -6,16 +6,10 @@ namespace Eznix86\PestPluginTestContainers\Container;
 
 use Closure;
 use Eznix86\PestPluginTestContainers\Container\PortMapping\FixedPortSequenceGenerator;
-use Eznix86\PestPluginTestContainers\Container\PortMapping\PortAllocator;
-use Eznix86\PestPluginTestContainers\Container\PortMapping\ProtocolAwareRandomUniquePortAllocator;
-use Eznix86\PestPluginTestContainers\Container\PortMapping\SaferRandomUniquePortGenerator;
-use Eznix86\PestPluginTestContainers\Container\PortMapping\WorkerPortAllocator;
-use Eznix86\PestPluginTestContainers\Container\PortMapping\WorkerPortGenerator;
 use Eznix86\PestPluginTestContainers\Container\Reuse\ReusableContainerResolver;
 use Eznix86\PestPluginTestContainers\Container\Reuse\ReuseOptions;
 use Eznix86\PestPluginTestContainers\Container\Reuse\WorkerTokenResolver;
 use InvalidArgumentException;
-use RuntimeException;
 use Testcontainers\Container\GenericContainer;
 use Testcontainers\Container\HttpMethod;
 use Testcontainers\ContainerClient\DockerContainerClient;
@@ -26,22 +20,17 @@ use Throwable;
 
 final readonly class ContainerBuilder
 {
+    private const string MANAGED_BY_LABEL_KEY = 'pest-plugin-testcontainers.managed';
+
+    private const string MANAGED_BY_LABEL_VALUE = '1';
+
     private const int START_MAX_ATTEMPTS = 6;
 
     private const int START_RETRY_BASE_DELAY_MICROSECONDS = 500_000;
 
     private const int START_RETRY_MAX_DELAY_MICROSECONDS = 5_000_000;
 
-    /**
-     * @var list<string>
-     */
-    private const array TRANSIENT_DOCKER_START_ERROR_MARKERS = [
-        'server error',
-    ];
-
     private GenericContainer $container;
-
-    private PortAllocator $portAllocator;
 
     private ReuseOptions $reuseOptions;
 
@@ -68,26 +57,16 @@ final readonly class ContainerBuilder
         callable $registerContainer,
         callable $skipTest,
     ) {
-        $this->container = new GenericContainer($image);
-
-        if ($this->isRunningInParallel()) {
-            $this->container->withPortGenerator(new WorkerPortGenerator);
-            $this->portAllocator = new WorkerPortAllocator;
-        } else {
-            $this->container->withPortGenerator(new SaferRandomUniquePortGenerator);
-            $this->portAllocator = new ProtocolAwareRandomUniquePortAllocator;
-        }
+        $this->container = (new GenericContainer($image))
+            ->withLabels([
+                self::MANAGED_BY_LABEL_KEY => self::MANAGED_BY_LABEL_VALUE,
+            ]);
 
         $this->reuseOptions = new ReuseOptions;
         $this->reusableContainerResolver = new ReusableContainerResolver;
         $this->workerTokenResolver = new WorkerTokenResolver;
         $this->registerContainer = Closure::fromCallable($registerContainer);
         $this->skipTest = Closure::fromCallable($skipTest);
-    }
-
-    private function isRunningInParallel(): bool
-    {
-        return ($_SERVER['PEST_PARALLEL'] ?? $_ENV['PEST_PARALLEL'] ?? '0') === '1';
     }
 
     /**
@@ -98,10 +77,8 @@ final readonly class ContainerBuilder
         if (array_is_list($ports)) {
             /** @var list<int|string> $containerPorts */
             $containerPorts = array_map($this->normalizeContainerPort(...), $ports);
-            /** @var list<int> $hostPorts */
-            $hostPorts = array_map($this->portAllocator->allocateForContainerPort(...), $containerPorts);
 
-            $this->configurePortMapping($containerPorts, $hostPorts);
+            $this->container->withExposedPorts(...$containerPorts);
 
             return $this;
         }
@@ -329,9 +306,18 @@ final readonly class ContainerBuilder
                 if ($reusedContainer instanceof StartedContainer) {
                     return ($this->registerContainer)($reusedContainer);
                 }
+
+                try {
+                    $recreatedContainer = $this->startContainerWithRetry();
+                    $recreatedContainer->skipAutoCleanup();
+
+                    return ($this->registerContainer)($recreatedContainer);
+                } catch (Throwable $recreateException) {
+                    $exception = $recreateException;
+                }
             }
 
-            ($this->skipTest)('Container startup issue: '.$exception->getMessage());
+            ($this->skipTest)('Container startup issue: '.$this->describeThrowable($exception));
         }
     }
 
@@ -343,11 +329,7 @@ final readonly class ContainerBuilder
             try {
                 return new StartedContainer($this->container->start());
             } catch (Throwable $exception) {
-                if (! $this->isTransientDockerStartError($exception)) {
-                    throw $exception;
-                }
-
-                $this->cleanupFailedContainerAfterTransientStartError();
+                $this->cleanupFailedContainerAfterStartError();
                 $lastException = $exception;
 
                 if ($attempt < self::START_MAX_ATTEMPTS - 1) {
@@ -355,26 +337,46 @@ final readonly class ContainerBuilder
                 }
             }
         }
-
-        throw new RuntimeException(
-            'Container failed to start after retrying transient Docker errors.',
-            previous: $lastException,
-        );
+        throw $lastException;
     }
 
-    private function isTransientDockerStartError(Throwable $exception): bool
+    private function describeThrowable(Throwable $exception): string
     {
-        for ($current = $exception; $current instanceof Throwable; $current = $current->getPrevious()) {
-            $message = strtolower($current->getMessage());
+        $descriptions = [];
 
-            foreach (self::TRANSIENT_DOCKER_START_ERROR_MARKERS as $marker) {
-                if (str_contains($message, $marker)) {
-                    return true;
+        for ($current = $exception; $current instanceof Throwable; $current = $current->getPrevious()) {
+            $message = trim($current->getMessage());
+
+            if (method_exists($current, 'getErrorResponse')) {
+                $errorResponse = $current->getErrorResponse();
+
+                if (is_object($errorResponse) && method_exists($errorResponse, 'getMessage')) {
+                    $dockerMessage = $errorResponse->getMessage();
+
+                    if (is_string($dockerMessage) && $dockerMessage !== '' && ! str_contains($message, $dockerMessage)) {
+                        $message = trim($message.' | docker: '.$dockerMessage);
+                    }
                 }
             }
+
+            if (method_exists($current, 'getResponse')) {
+                $response = $current->getResponse();
+
+                if (is_object($response) && method_exists($response, 'getStatusCode')) {
+                    $statusCode = $response->getStatusCode();
+                    $reason = method_exists($response, 'getReasonPhrase') ? $response->getReasonPhrase() : '';
+
+                    if (is_int($statusCode)) {
+                        $httpPart = sprintf('HTTP %d%s', $statusCode, is_string($reason) && $reason !== '' ? ' '.$reason : '');
+                        $message = trim($message.' | '.$httpPart);
+                    }
+                }
+            }
+
+            $descriptions[] = sprintf('%s: %s', $current::class, $message === '' ? '(empty message)' : $message);
         }
 
-        return false;
+        return implode(' <- ', $descriptions);
     }
 
     private function startRetryDelayForAttempt(int $attempt): int
@@ -384,7 +386,7 @@ final readonly class ContainerBuilder
         return min($delay, self::START_RETRY_MAX_DELAY_MICROSECONDS);
     }
 
-    private function cleanupFailedContainerAfterTransientStartError(): void
+    private function cleanupFailedContainerAfterStartError(): void
     {
         try {
             $containerId = $this->container->getId();

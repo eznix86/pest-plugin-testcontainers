@@ -36,43 +36,22 @@ function portFromSocketAddress(string $address): int
 }
 
 /**
- * @param  list<string>  $keys
- * @return array<string, array{server: mixed, env: mixed, getenv: mixed}>
+ * @param  array<string, ?string>  $variables
  */
-function snapshotEnvironment(array $keys): array
+function withTemporaryEnvironment(array $variables, callable $callback): mixed
 {
     $snapshot = [];
 
-    foreach ($keys as $key) {
-        $snapshot[$key] = [
-            'server' => $_SERVER[$key] ?? null,
-            'env' => $_ENV[$key] ?? null,
-            'getenv' => getenv($key) === false ? null : getenv($key),
-        ];
+    foreach ($variables as $key => $value) {
+        $snapshot[$key] = getenv($key);
+        setEnvironmentValue($key, $value);
     }
 
-    return $snapshot;
-}
-
-/**
- * @param  array<string, array{server: mixed, env: mixed, getenv: mixed}>  $snapshot
- */
-function restoreEnvironment(array $snapshot): void
-{
-    foreach ($snapshot as $key => $values) {
-        unset($_SERVER[$key], $_ENV[$key]);
-        putenv($key);
-
-        if ($values['server'] !== null) {
-            $_SERVER[$key] = $values['server'];
-        }
-
-        if ($values['env'] !== null) {
-            $_ENV[$key] = $values['env'];
-        }
-
-        if (is_string($values['getenv'])) {
-            putenv($key.'='.$values['getenv']);
+    try {
+        return $callback();
+    } finally {
+        foreach ($snapshot as $key => $value) {
+            setEnvironmentValue($key, $value === false ? null : $value);
         }
     }
 }
@@ -89,20 +68,6 @@ function setEnvironmentValue(string $key, ?string $value): void
     $_SERVER[$key] = $value;
     $_ENV[$key] = $value;
     putenv($key.'='.$value);
-}
-
-/**
- * @param  list<string>  $keys
- */
-function withEnvironmentSnapshot(array $keys, callable $callback): mixed
-{
-    $snapshot = snapshotEnvironment($keys);
-
-    try {
-        return $callback();
-    } finally {
-        restoreEnvironment($snapshot);
-    }
 }
 
 /**

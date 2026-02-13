@@ -8,48 +8,18 @@ use function Eznix86\PestPluginTestContainers\registerPluginUses;
 use function Eznix86\PestPluginTestContainers\registerStorageExpectations;
 use function Eznix86\PestPluginTestContainers\resolveStorageDisk;
 
-it('should resolve and normalize worker token from configured environment variables', function () {
-    withEnvironmentSnapshot([
-        'TEST_TOKEN',
-        'PARATEST',
-        'PARATEST_PROCESS',
-        'PEST_WORKER',
-        'PEST_PARALLEL_PROCESS',
-    ], function (): void {
-        setEnvironmentValue('TEST_TOKEN', null);
-        setEnvironmentValue('PARATEST_PROCESS', null);
-        setEnvironmentValue('PEST_WORKER', null);
-        setEnvironmentValue('PEST_PARALLEL_PROCESS', null);
-        setEnvironmentValue('PARATEST', '  Worker #1  ');
-
-        expect((new WorkerTokenResolver)->resolve())->toBe('Worker--1');
-
-        setEnvironmentValue('TEST_TOKEN', 'alpha/beta');
-
-        expect((new WorkerTokenResolver)->resolve())->toBe('alpha-beta');
-
-        setEnvironmentValue('TEST_TOKEN', null);
-        setEnvironmentValue('PARATEST', null);
-        setEnvironmentValue('PEST_PARALLEL_PROCESS', 'proc@42');
-
-        expect((new WorkerTokenResolver)->resolve())->toBe('proc-42');
+it('should resolve worker token from TEST_TOKEN when numeric', function () {
+    withTemporaryEnvironment(['TEST_TOKEN' => '4'], function (): void {
+        expect((new WorkerTokenResolver)->resolve())->toBe('4');
     });
 });
 
-it('should return null when no valid worker token is available', function () {
-    withEnvironmentSnapshot([
-        'TEST_TOKEN',
-        'PARATEST',
-        'PARATEST_PROCESS',
-        'PEST_WORKER',
-        'PEST_PARALLEL_PROCESS',
-    ], function (): void {
-        setEnvironmentValue('TEST_TOKEN', null);
-        setEnvironmentValue('PARATEST', null);
-        setEnvironmentValue('PARATEST_PROCESS', " \n\t ");
-        setEnvironmentValue('PEST_WORKER', null);
-        setEnvironmentValue('PEST_PARALLEL_PROCESS', null);
+it('should return null when TEST_TOKEN is missing or not numeric', function () {
+    withTemporaryEnvironment(['TEST_TOKEN' => null], function (): void {
+        expect((new WorkerTokenResolver)->resolve())->toBeNull();
+    });
 
+    withTemporaryEnvironment(['TEST_TOKEN' => 'worker-one'], function (): void {
         expect((new WorkerTokenResolver)->resolve())->toBeNull();
     });
 });

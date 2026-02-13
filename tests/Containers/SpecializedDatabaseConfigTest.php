@@ -106,9 +106,7 @@ it('should generate and use a random mysql database name by default', function (
 });
 
 it('should use reuse name as connection name, including per worker suffix', function () {
-    withEnvironmentSnapshot(['TEST_TOKEN'], function (): void {
-        setEnvironmentValue('TEST_TOKEN', '200');
-
+    withTemporaryEnvironment(['TEST_TOKEN' => '200'], function (): void {
         $builder = postgres()
             ->reuse('shared-postgres', perWorker: true)
             ->asDatabase('shared_db')

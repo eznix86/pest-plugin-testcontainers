@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Eznix86\PestPluginTestContainers\ConfigInjectors\QueueConfigInjector;
-use Eznix86\PestPluginTestContainers\Container\PortMapping\ProtocolAwareRandomUniquePortAllocator;
 use Eznix86\PestPluginTestContainers\Container\StartedContainer;
 
 use function Eznix86\PestPluginTestContainers\postgres;
@@ -99,29 +98,15 @@ it('should inject queue config with custom, redis and database driver variants',
         ->and(config("database.redis.{$databaseConnection}"))->toBeNull();
 });
 
-it('should allocate protocol-aware random unique ports for tcp and udp', function () {
-    $allocator = new ProtocolAwareRandomUniquePortAllocator;
+it('should let docker assign an available host port for exposed ports', function () {
+    $container = $this->container('nginx:alpine')
+        ->ports([80])
+        ->waitForPort(80)
+        ->start();
 
-    $tcpPort = $allocator->allocateForContainerPort(8080);
-    $udpPort = $allocator->allocateForContainerPort('5353/udp');
-
-    expect($tcpPort)->toBeInt()->toBeGreaterThanOrEqual(10000)->toBeLessThanOrEqual(65535)
-        ->and($udpPort)->toBeInt()->toBeGreaterThanOrEqual(10000)->toBeLessThanOrEqual(65535)
-        ->and($udpPort)->not->toBe($tcpPort);
-});
-
-it('should use worker-based port allocation when parallel mode is enabled', function () {
-    withEnvironmentSnapshot(['PEST_PARALLEL', 'TEST_TOKEN'], function (): void {
-        setEnvironmentValue('PEST_PARALLEL', '1');
-        setEnvironmentValue('TEST_TOKEN', '4');
-
-        $container = $this->container('nginx:alpine')
-            ->ports([80])
-            ->waitForPort(80)
-            ->start();
-
-        expect($container->mappedPort(80))->toBe(49552);
-    });
+    expect($container->mappedPort(80))
+        ->toBeInt()
+        ->toBeGreaterThan(0);
 });
 
 it('should accept https and insecure flags in waitForHttp builder configuration', function () {
