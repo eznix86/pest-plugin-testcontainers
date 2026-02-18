@@ -4,9 +4,9 @@
 
 ## Why use this plugin?
 
-- Spin up real services (Postgres, Redis, Meilisearch, MinIO, etc.) in tests with minimal setup.
-- Configure Laravel integrations (`database`, `cache`, `scout`, `storage`) in one fluent chain.
-- Keep tests deterministic with built-in wait strategies and optional container reuse.
+- Test your own containers to ensure it runs smoothly with the expected behavior.
+- Spin up services (Postgres, Redis, Meilisearch, MinIO, and more) in tests with minimal setup.
+- Integrates with Laravel (`database`, `cache`, `scout`, `storage`) in one fluent chain.
 
 ## Table of Contents
 
