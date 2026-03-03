@@ -11,3 +11,4 @@ coverage.xml
 *.swo
 .phpunit.cache
 storage/
+.DS_Store

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Eznix86\PestPluginTestContainers;
 
+use Eznix86\PestPluginTestContainers\Builders\GarageContainerBuilder;
 use Eznix86\PestPluginTestContainers\Builders\MariaDbContainerBuilder;
 use Eznix86\PestPluginTestContainers\Builders\MeilisearchContainerBuilder;
 use Eznix86\PestPluginTestContainers\Builders\MinioContainerBuilder;
@@ -67,6 +68,13 @@ function minio(?string $version = null): MinioContainerBuilder
     $image = resolveImage($version, 'minio/minio', 'latest');
 
     return new MinioContainerBuilder(resolveBaseContainerBuilder('minio', $image));
+}
+
+function garage(?string $version = null): GarageContainerBuilder
+{
+    $image = resolveImage($version, 'dxflrs/garage', 'v2.2.0');
+
+    return new GarageContainerBuilder(resolveBaseContainerBuilder('garage', $image));
 }
 
 function resolveImage(?string $version, string $repository, string $defaultTag): string

@@ -30,6 +30,7 @@ final class StartedContainer
         self::DOCKER_INSPECT_RACE_ERROR,
         'foreach() argument must be of type array|object',
         self::PORT_BINDING_RACE_ERROR,
+        'Failed to get mapped port',
     ];
 
     /**
@@ -132,6 +133,11 @@ final class StartedContainer
         }
 
         $ports = $networkSettings['Ports'] ?? null;
+
+        if (! is_array($ports) || $ports === []) {
+            $hostConfig = $payload['HostConfig'] ?? null;
+            $ports = is_array($hostConfig) ? ($hostConfig['PortBindings'] ?? null) : null;
+        }
 
         if (! is_array($ports)) {
             return null;

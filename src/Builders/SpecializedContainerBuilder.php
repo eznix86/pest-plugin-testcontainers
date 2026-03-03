@@ -25,6 +25,11 @@ abstract class SpecializedContainerBuilder
      */
     protected array $configInjectors = [];
 
+    /**
+     * @var list<callable(StartedContainer): void>
+     */
+    protected array $postStartHooks = [];
+
     public function __construct(protected ContainerBuilder $builder, private string $helperName) {}
 
     protected function setImage(string $image): void
@@ -44,6 +49,16 @@ abstract class SpecializedContainerBuilder
         /** @var Closure(StartedContainer): void $closure */
         $closure = Closure::fromCallable($injector);
         $this->configInjectors[] = $closure;
+    }
+
+    /**
+     * @param  callable(StartedContainer): void  $hook
+     */
+    protected function addPostStartHook(callable $hook): void
+    {
+        /** @var Closure(StartedContainer): void $closure */
+        $closure = Closure::fromCallable($hook);
+        $this->postStartHooks[] = $closure;
     }
 
     /**
@@ -191,6 +206,10 @@ abstract class SpecializedContainerBuilder
 
         foreach ($this->configInjectors as $injector) {
             $injector($container);
+        }
+
+        foreach ($this->postStartHooks as $hook) {
+            $hook($container);
         }
 
         return $container;
