@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Eznix86\PestPluginTestContainers\ConfigInjectors;
 
 use Eznix86\PestPluginTestContainers\Container\StartedContainer;
+use Eznix86\PestPluginTestContainers\Values\StorageAccessMode;
 
 final class StorageConfigInjector
 {
@@ -15,7 +16,8 @@ final class StorageConfigInjector
         string $secret,
         ?string $disk = null,
         string $bucket = 'test',
-        string $region = 'us-east-1'
+        string $region = 'us-east-1',
+        StorageAccessMode $mode = StorageAccessMode::Private,
     ): void {
         $disk ??= sprintf('testcontainer_%s', bin2hex(random_bytes(6)));
 
@@ -26,6 +28,7 @@ final class StorageConfigInjector
                 'secret' => $secret,
                 'region' => $region,
                 'bucket' => $bucket,
+                'visibility' => $mode->visibility(),
                 'endpoint' => sprintf('http://%s:%d', $container->host(), $container->mappedPort($port)),
                 'use_path_style_endpoint' => true,
             ],

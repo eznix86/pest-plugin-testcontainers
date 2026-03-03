@@ -3,7 +3,7 @@ name: Tests
 on: ['push', 'pull_request']
 
 jobs:
-  ci:
+  ci-fast:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -13,7 +13,7 @@ jobs:
         dependency-version: [prefer-lowest, prefer-stable]
         shard: [1, 2, 3, 4, 5]
 
-    name: Tests (Shard ${{ matrix.shard }}/5) - PHP ${{ matrix.php }} - ${{ matrix.os }} - ${{ matrix.dependency-version }}
+    name: Fast Tests (Shard ${{ matrix.shard }}/5) - PHP ${{ matrix.php }} - ${{ matrix.os }} - ${{ matrix.dependency-version }}
 
     steps:
     - name: Checkout
@@ -35,5 +35,5 @@ jobs:
     - name: Install PHP dependencies
       run: composer update --${{ matrix.dependency-version }} --no-interaction --no-progress --ansi
 
-    - name: Run tests
-      run: ./vendor/bin/pest --ci --parallel --shard ${{ matrix.shard }}/5
+    - name: Run fast tests
+      run: ./vendor/bin/pest --ci --parallel --exclude-group=integration --shard ${{ matrix.shard }}/5

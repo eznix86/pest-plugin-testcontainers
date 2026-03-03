@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Eznix86\PestPluginTestContainers\Builders\GarageContainerBuilder;
 use Eznix86\PestPluginTestContainers\Builders\MariaDbContainerBuilder;
 use Eznix86\PestPluginTestContainers\Builders\MeilisearchContainerBuilder;
 use Eznix86\PestPluginTestContainers\Builders\MinioContainerBuilder;
@@ -10,6 +11,7 @@ use Eznix86\PestPluginTestContainers\Builders\PostgresContainerBuilder;
 use Eznix86\PestPluginTestContainers\Builders\RedisContainerBuilder;
 use Eznix86\PestPluginTestContainers\Builders\TypesenseContainerBuilder;
 
+use function Eznix86\PestPluginTestContainers\garage;
 use function Eznix86\PestPluginTestContainers\mariadb;
 use function Eznix86\PestPluginTestContainers\meilisearch;
 use function Eznix86\PestPluginTestContainers\minio;
@@ -25,7 +27,8 @@ it('should provide specialized container helper functions', function () {
         ->and(redis())->toBeInstanceOf(RedisContainerBuilder::class)
         ->and(typesense())->toBeInstanceOf(TypesenseContainerBuilder::class)
         ->and(meilisearch())->toBeInstanceOf(MeilisearchContainerBuilder::class)
-        ->and(minio())->toBeInstanceOf(MinioContainerBuilder::class);
+        ->and(minio())->toBeInstanceOf(MinioContainerBuilder::class)
+        ->and(garage())->toBeInstanceOf(GarageContainerBuilder::class);
 });
 
 it('should accept version tags in specialized helpers', function () {
@@ -35,5 +38,6 @@ it('should accept version tags in specialized helpers', function () {
         ->and(redis('7-alpine'))->toBeInstanceOf(RedisContainerBuilder::class)
         ->and(typesense('0.28.0'))->toBeInstanceOf(TypesenseContainerBuilder::class)
         ->and(meilisearch('v1.12'))->toBeInstanceOf(MeilisearchContainerBuilder::class)
-        ->and(minio('RELEASE.2025-09-07T16-13-09Z-cpuv1'))->toBeInstanceOf(MinioContainerBuilder::class);
+        ->and(minio('RELEASE.2025-09-07T16-13-09Z-cpuv1'))->toBeInstanceOf(MinioContainerBuilder::class)
+        ->and(garage('v2.2.0'))->toBeInstanceOf(GarageContainerBuilder::class);
 });

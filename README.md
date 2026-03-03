@@ -123,6 +123,7 @@ Specialized helpers are available for common Laravel services:
 - `typesense(?string $version = null)`
 - `meilisearch(?string $version = null)`
 - `minio(?string $version = null)`
+- `garage(?string $version = null)`
 
 All specialized builders also support:
 
@@ -189,7 +190,14 @@ it('uses typesense as laravel scout driver', function () {
 
 ### Storage (`asStorage`)
 
-Use `minio()->asStorage()` to inject an S3 disk and set it as default.
+Use `minio()->asStorage()` or `garage()->asStorage()` to inject an S3 disk and set it as default.
+
+Storage builders support access mode helpers:
+
+- `->private()` (default)
+- `->public()`
+
+`asStorage()` always propagates this mode to Laravel disk visibility (`filesystems.disks.<disk>.visibility`).
 
 ```php
 use Illuminate\Support\Facades\Storage;
@@ -204,6 +212,42 @@ it('uses minio as laravel storage', function () {
     expect('hello.txt')->toBeInStorage();
     expect('missing.txt')->toNotBeInStorage();
 });
+
+it('uses minio public bucket policy + laravel visibility', function () {
+    $container = minio()
+        ->public()
+        ->asStorage('assets')
+        ->start();
+
+    expect(config('filesystems.disks.assets.visibility'))->toBe('public');
+});
+```
+
+```php
+use function Eznix86\PestPluginTestContainers\garage;
+
+it('uses garage storage with custom toml', function () {
+    $container = garage('v2.2.0')
+        ->withTomlConfig('/absolute/path/to/garage.toml')
+        ->public()
+        ->asStorage('garage-assets')
+        ->start();
+
+    expect(config('filesystems.disks.garage-assets.visibility'))->toBe('public');
+});
+```
+
+Capability notes:
+
+- MinIO `->public()` configures Laravel disk visibility and sets anonymous bucket policy.
+- Garage `->public()` configures Laravel disk visibility and enables bucket website mode (`garage bucket website --allow`).
+- Garage does not implement S3 ACL/policy endpoints, so it does not offer MinIO-equivalent anonymous S3 bucket policy behavior.
+
+Local public website testing for Garage (no DNS required):
+
+```bash
+curl -i -H 'Host: test' http://127.0.0.1:<mapped-3902>/
+curl -i -H 'Host: test' http://127.0.0.1:<mapped-3902>/path/to/file.jpg
 ```
 
 ## Expectations
@@ -268,9 +312,14 @@ Specialized helper methods:
     ->passphrase(string $phrase)
     ->asSearch()
 
-// minio()
-    ->credentials(string $username, string $password)
+// minio(), garage()
+    ->credentials(string $accessKey, string $secretKey)
+    ->public()
+    ->private()
     ->asStorage(?string $disk = null)
+
+// garage()
+    ->withTomlConfig(string $path)
 
 // all specialized builders
     ->reuse(string $name, bool $perWorker = false)
