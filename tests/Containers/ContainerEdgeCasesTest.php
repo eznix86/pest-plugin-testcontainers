@@ -17,13 +17,13 @@ final class ManualStartedTestContainer implements StartedTestContainer
         private readonly string $host,
         private readonly int $openPort,
         private readonly int $transientFailures = 0,
-        private readonly ?\Throwable $fatal = null,
+        private readonly ?Throwable $fatal = null,
         private readonly string $id = 'manual-container',
     ) {}
 
     public function exec(array $command): string
     {
-        throw new \RuntimeException('Not used in this test.');
+        throw new RuntimeException('Not used in this test.');
     }
 
     public function getBoundPorts(): iterable
@@ -53,7 +53,7 @@ final class ManualStartedTestContainer implements StartedTestContainer
 
     public function getIpAddress(string $networkName): string
     {
-        throw new \RuntimeException('Not used in this test.');
+        throw new RuntimeException('Not used in this test.');
     }
 
     public function getLabels(): array
@@ -75,12 +75,12 @@ final class ManualStartedTestContainer implements StartedTestContainer
     {
         $this->calls++;
 
-        if ($this->fatal instanceof \Throwable) {
+        if ($this->fatal instanceof Throwable) {
             throw $this->fatal;
         }
 
         if ($this->calls <= $this->transientFailures) {
-            throw new \Exception('foreach() argument must be of type array|object, null given');
+            throw new Exception('foreach() argument must be of type array|object, null given');
         }
 
         return $this->openPort;
@@ -93,7 +93,7 @@ final class ManualStartedTestContainer implements StartedTestContainer
 
     public function getNetworkId(string $networkName): string
     {
-        throw new \RuntimeException('Not used in this test.');
+        throw new RuntimeException('Not used in this test.');
     }
 
     public function getNetworkNames(): array
@@ -108,7 +108,7 @@ final class ManualStartedTestContainer implements StartedTestContainer
 
     public function stop(): StoppedTestContainer
     {
-        throw new \RuntimeException('Not used in this test.');
+        throw new RuntimeException('Not used in this test.');
     }
 }
 
@@ -131,11 +131,11 @@ it('should rethrow non-transient throwables while waiting for a port', function 
     $container = new ManualStartedTestContainer(
         '127.0.0.1',
         65535,
-        fatal: new \Exception('fatal wait failure')
+        fatal: new Exception('fatal wait failure')
     );
 
     expect(fn () => (new WaitForPort(port: 80, timeout: 100, pollInterval: 10))->wait($container))
-        ->toThrow(\Exception::class, 'fatal wait failure');
+        ->toThrow(Exception::class, 'fatal wait failure');
 });
 
 it('should wrap container start failures for invalid images', function () {
@@ -143,12 +143,12 @@ it('should wrap container start failures for invalid images', function () {
         'nonexistent-image-for-coverage:latest',
         fn ($container) => $container,
         function (string $message): never {
-            throw new \RuntimeException($message);
+            throw new RuntimeException($message);
         },
     );
 
     expect(fn () => $builder->start())
-        ->toThrow(\RuntimeException::class, 'Container startup issue:');
+        ->toThrow(RuntimeException::class, 'Container startup issue:');
 });
 
 it('should expose configured reuse names with and without worker tokens', function () {
@@ -156,7 +156,7 @@ it('should expose configured reuse names with and without worker tokens', functi
         'alpine:3.20',
         fn ($container) => $container,
         function (string $message): never {
-            throw new \RuntimeException($message);
+            throw new RuntimeException($message);
         },
     );
 

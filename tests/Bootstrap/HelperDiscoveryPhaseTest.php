@@ -8,7 +8,7 @@ $helperDiscoveryPhaseMessage = null;
 
 try {
     container('alpine:3.20');
-} catch (\Throwable $throwable) {
+} catch (Throwable $throwable) {
     $helperDiscoveryPhaseMessage = $throwable->getMessage();
 }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Eznix86\PestPluginTestContainers\Concerns\HasSinglePassPhrase;
 use Eznix86\PestPluginTestContainers\Container\WaitForPort;
+use PHPUnit\Framework\MockObject\MockObject;
 use Testcontainers\Container\StartedTestContainer;
 use Testcontainers\Exception\ContainerWaitingTimeoutException;
 
@@ -13,7 +14,7 @@ it('should wait until a mapped port is open', function () {
 
     $openPort = portFromSocketAddress((string) stream_socket_get_name($server, false));
 
-    /** @var StartedTestContainer&\PHPUnit\Framework\MockObject\MockObject $container */
+    /** @var StartedTestContainer&MockObject $container */
     $container = $this->createMock(StartedTestContainer::class);
     $container->method('getHost')->willReturn('127.0.0.1');
     $container->method('getMappedPort')->with(8080)->willReturn($openPort);
@@ -29,7 +30,7 @@ it('should use first mapped port when no explicit port is provided', function ()
 
     $openPort = portFromSocketAddress((string) stream_socket_get_name($server, false));
 
-    /** @var StartedTestContainer&\PHPUnit\Framework\MockObject\MockObject $container */
+    /** @var StartedTestContainer&MockObject $container */
     $container = $this->createMock(StartedTestContainer::class);
     $container->method('getHost')->willReturn('127.0.0.1');
     $container->method('getFirstMappedPort')->willReturn($openPort);
@@ -40,7 +41,7 @@ it('should use first mapped port when no explicit port is provided', function ()
 });
 
 it('should time out when the mapped port never opens', function () {
-    /** @var StartedTestContainer&\PHPUnit\Framework\MockObject\MockObject $container */
+    /** @var StartedTestContainer&MockObject $container */
     $container = $this->createMock(StartedTestContainer::class);
     $container->method('getId')->willReturn('fake-id');
     $container->method('getHost')->willReturn('127.0.0.1');

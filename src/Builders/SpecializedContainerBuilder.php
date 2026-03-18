@@ -8,6 +8,7 @@ use Closure;
 use Eznix86\PestPluginTestContainers\Concerns\HasCustomImage;
 use Eznix86\PestPluginTestContainers\Container\ContainerBuilder;
 use Eznix86\PestPluginTestContainers\Container\StartedContainer;
+use Testcontainers\Container\HttpMethod;
 
 abstract class SpecializedContainerBuilder
 {
@@ -127,7 +128,7 @@ abstract class SpecializedContainerBuilder
 
     /**
      * @param  array<string, string>  $headers
-     * @param  'DELETE'|'GET'|'HEAD'|'OPTIONS'|'POST'|'PUT'|\Testcontainers\Container\HttpMethod  $method
+     * @param  'DELETE'|'GET'|'HEAD'|'OPTIONS'|'POST'|'PUT'|HttpMethod  $method
      */
     public function waitForHttp(
         string $path = '/',

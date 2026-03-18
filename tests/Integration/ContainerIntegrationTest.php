@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use Eznix86\PestPluginTestContainers\Builders\PostgresContainerBuilder;
 use Eznix86\PestPluginTestContainers\ConfigInjectors\QueueConfigInjector;
+use Eznix86\PestPluginTestContainers\Container\ContainerBuilder;
 use Eznix86\PestPluginTestContainers\Container\StartedContainer;
 
 use function Eznix86\PestPluginTestContainers\postgres;
@@ -30,7 +32,7 @@ it('should support specialized builder operation chaining without starting', fun
         ->waitForCommand(['sh', '-lc', 'test -d /var/lib/postgresql/data'])
         ->asDatabase('heavy_ops_db');
 
-    expect($builder)->toBeInstanceOf(\Eznix86\PestPluginTestContainers\Builders\PostgresContainerBuilder::class);
+    expect($builder)->toBeInstanceOf(PostgresContainerBuilder::class);
 
     @unlink($fixturePath);
 });
@@ -114,5 +116,5 @@ it('should accept https and insecure flags in waitForHttp builder configuration'
         ->ports([80])
         ->waitForHttp(path: '/', port: 80, https: true, allowInsecure: true, timeoutSeconds: 1);
 
-    expect($builder)->toBeInstanceOf(\Eznix86\PestPluginTestContainers\Container\ContainerBuilder::class);
+    expect($builder)->toBeInstanceOf(ContainerBuilder::class);
 });
