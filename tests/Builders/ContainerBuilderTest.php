@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Docker\API\Exception\ContainerDeleteConflictException;
+use Docker\API\Exception\ContainerInspectNotFoundException;
 use Eznix86\PestPluginTestContainers\Tests\TestCase;
 use Testcontainers\ContainerClient\DockerContainerClient;
 
@@ -202,7 +204,8 @@ it('should recreate reusable container when named container disappeared', functi
         });
 
         $firstContainerId = $firstContainer->raw()->getId();
-        $firstContainer->raw()->getClient()->containerDelete($firstContainerId, ['force' => true]);
+
+        removeContainerAndWaitUntilDeleted($firstContainerId);
 
         $secondContainer = startIdleContainer($testCase, configure: static function ($builder) use ($reuseName): void {
             $builder->reuse($reuseName);
@@ -227,3 +230,39 @@ it('should recreate reusable container when named container disappeared', functi
         }
     }
 });
+
+function removeContainerAndWaitUntilDeleted(string $containerId): void
+{
+    $docker = DockerContainerClient::getDockerClient();
+    $lastException = null;
+
+    for ($attempt = 0; $attempt < 10; $attempt++) {
+        try {
+            $docker->containerDelete($containerId, ['force' => true]);
+        } catch (ContainerDeleteConflictException $exception) {
+            $lastException = $exception;
+        }
+
+        if (containerDoesNotExist($containerId)) {
+            return;
+        }
+
+        usleep(100_000);
+    }
+
+    throw new RuntimeException(
+        sprintf('Container [%s] was not deleted after repeated attempts.', $containerId),
+        previous: $lastException,
+    );
+}
+
+function containerDoesNotExist(string $containerId): bool
+{
+    try {
+        DockerContainerClient::getDockerClient()->containerInspect($containerId);
+    } catch (ContainerInspectNotFoundException) {
+        return true;
+    }
+
+    return false;
+}

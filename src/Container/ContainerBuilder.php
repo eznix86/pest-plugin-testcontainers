@@ -329,6 +329,10 @@ final readonly class ContainerBuilder
             try {
                 return new StartedContainer($this->container->start());
             } catch (Throwable $exception) {
+                if ($this->reuseOptions->name !== null && $this->reusableContainerResolver->isNameConflict($exception)) {
+                    throw $exception;
+                }
+
                 $this->cleanupFailedContainerAfterStartError();
                 $lastException = $exception;
 
