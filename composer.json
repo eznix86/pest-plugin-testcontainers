@@ -33,7 +33,7 @@
     },
     "require-dev": {
         "orchestra/testbench": "^11.0",
-        "pestphp/pest-dev-tools": "^4.0.0"
+        "pestphp/pest-dev-tools": "^5.0.0"
     },
     "conflict": {
         "guzzlehttp/promises": "<2.0.3"
